@@ -41,6 +41,17 @@ finding.
 knows how to resume. `flow-setup` detects a repository's commands once and
 writes them to `.claude/flow-profile.md`.
 
+## Unattended runs
+
+`flow` can be handed a goal and left to run — normally from the point the plan
+is approved. Two things are declared at launch: where autonomy begins, and where
+it ends (work left in the tree, committed, or pushed with a pull request). The
+human gates do not disappear, they change shape: a blocker finding is fixed or
+the run stops, a question that cannot be asked becomes an `ASSUMED` entry in the
+ledger that leads the final report, and the review loop gets a round budget so
+it terminates with an honest "not converged, here is what is open" instead of
+running all night.
+
 ## Two files carry the state
 
 **`<project-root>/.claude/flow-profile.md`** — per repository. Build, test, lint

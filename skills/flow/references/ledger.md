@@ -49,6 +49,7 @@ It is a ledger, not a diary: no narration of what you did, no restating the diff
 
 - slug: add-vector-index
 - stage: review (round 2)
+- mode: unattended, ends at commit                              # omit when interactive
 - branch: users/mdk/add-vector-index
 - base: trunk@a1b2c3d
 - spec: openspec change `add-vector-index` in backend/harness   # or: none
@@ -65,6 +66,9 @@ edited only when the scope actually changes.
 ## Open questions
 - Q1 Does the sync worker need its own lease, or can it reuse the keeper's?
   → answered 2026-08-07: reuse the keeper's.
+- Q2 ASSUMED (unattended): retention defaults to 30 days, matching the
+  neighbouring table. Nobody was available to confirm; the conservative reading
+  was taken and this leads the final report.
 
 ## Findings
 ### R4 · blocker · correctness · backend/vfs/repository.go:88
@@ -98,6 +102,11 @@ that "R7 came back" is a meaningful sentence.
 
 **Decisions record the road not taken.** A decision without its rejected
 alternative is just a description of the code, which the code already provides.
+
+**An assumption taken because nobody could be asked is marked `ASSUMED`.** In an
+unattended run this is the highest-value line in the file: it is the one thing
+the user cannot reconstruct from the diff, and it is what the closing report
+leads with.
 
 **Keep it short.** If the ledger is longer than the diff it describes, it has
 started narrating. Trim.

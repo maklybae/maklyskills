@@ -7,10 +7,11 @@ description: >-
   skill whenever the user wants a task taken end-to-end rather than a one-off
   edit: when they say "по флоу", "по пайплайну", "прогони весь цикл", "доведи до
   конца", "start a full cycle"; when they ask which stage comes next or want to
-  resume a task started earlier; or when they hand over a ticket or feature big
-  enough that plan-then-build-then-review is the honest shape of the work. Also
-  use it to pick which single flow-* stage skill applies when only part of the
-  cycle is wanted.
+  resume a task started earlier; when they hand over a goal and step away
+  ("дальше сам", "сделай всё сам", "run it unattended"); or when they hand over
+  a ticket or feature big enough that plan-then-build-then-review is the honest
+  shape of the work. Also use it to pick which single flow-* stage skill applies
+  when only part of the cycle is wanted.
 ---
 
 # Flow
@@ -80,6 +81,52 @@ time:
   defect is the user's call, never yours.
 - **Before anything outward-facing** — commit, push, PR. The profile's VCS
   section says *how*; the user says *whether*.
+
+## Running unattended
+
+Sometimes the user hands over a goal and leaves: "сделай это по флоу, дальше
+сам". Two things have to be explicit before that run starts, and they are worth
+asking for, because getting them wrong is what makes an unattended run
+unrecoverable rather than merely wrong:
+
+- **Where autonomy begins.** Usually straight after the plan is approved — the
+  plan is the cheap place to correct course, and everything after it is
+  mechanical. Starting fully autonomously from a bare goal is possible, but then
+  the plan gets written and followed without anyone reading it, so say that out
+  loud rather than letting it happen quietly.
+- **Where it ends.** Work left in the tree, committed locally, or pushed with a
+  pull request opened. Silence means stop at the tree: an outward-facing action
+  does not become authorised by the fact that nobody was watching.
+
+Record both in the ledger header — `mode: unattended, ends at <boundary>` — so a
+session that resumes the work, and the user reading it in the morning, know
+which rules the run was operating under.
+
+**The three gates do not vanish when nobody can answer. They change shape.**
+
+- **A blocker is fixed or the run stops.** Silent acceptance is not available to
+  you: the only thing worse than an unfinished run is a finished one that shipped
+  a known defect. Never downgrade a severity so that the run can complete —
+  that is the exact failure this rule exists to prevent.
+- **A question you cannot ask is not permission to guess quietly.** Do
+  everything that does not depend on the answer, take the most conservative
+  reading of what remains, write the assumption into the ledger as an open
+  question, and **lead the final report with those assumptions**. A stated
+  assumption costs a paragraph to correct; a buried one costs the
+  implementation.
+- **Scope stays where the plan put it.** Unattended runs are where creep is
+  invisible, because there is nobody to notice the change growing. Anything you
+  discover outside the plan becomes a ledger entry, not an edit.
+
+**Budget the loop.** Review and resolve is the only unbounded part of the
+pipeline, and at night there is nobody to call it. Three rounds is a sensible
+default; if it has not converged by then, stop and report what is still open
+rather than spending hours narrowing minor findings.
+
+One practical check before promising to run to the end: an unattended run is
+only unattended if the session will not stop to ask permission for each edit and
+command. If it will, say so — a run that blocks on the first prompt and then
+sits idle is worse than one that never started.
 
 ## Project-specific facts
 

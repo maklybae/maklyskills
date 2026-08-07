@@ -100,6 +100,23 @@ Two guards against spinning:
   comments, defensive scaffolding and hurried tests; reviewing that is reviewing
   noise.
 
+## When the run is unattended
+
+If the user handed over the goal and left, two rules replace the conversations
+you would otherwise have:
+
+- **A blocker cannot be accepted, only fixed** — and if it cannot be fixed
+  inside this change, the run stops and reports rather than continuing. Lowering
+  a severity so that the loop can finish is the one move that turns an honest
+  unattended run into a dishonest one.
+- **The loop gets a budget**, three rounds by default. Convergence is the goal,
+  but an unconverged run that stops and says what is still open is far more
+  useful than one that spends the night rewording minor findings.
+
+Everything else is unchanged: verdicts still get reasons, and the closing report
+still leads with what was consciously accepted — with an unattended run it is
+the first thing the user reads when they come back.
+
 ## Closing report
 
 When the loop converges, give the user: how many rounds, findings by severity,
