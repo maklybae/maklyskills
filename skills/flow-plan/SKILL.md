@@ -31,10 +31,11 @@ openspec skills the project ships — to create the change and its artifacts
 Do not also write a separate plan file: two plans drift apart within a day, and
 nobody knows which one the code follows.
 
-**Otherwise**, write `.claude/flow/<slug>/plan.md` next to the ledger.
+**Otherwise**, write `plan.md` next to the ledger, in the same directory.
 
-Either way the ledger — `.claude/flow/<slug>/ledger.md`, schema in
-`../flow/references/ledger.md` relative to this skill's directory — points at
+Either way the ledger — outside the repository at
+`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`, schema
+in `../flow/references/ledger.md` relative to this skill's directory — points at
 the result through its `spec:` line, so later stages and review subagents can
 find it.
 

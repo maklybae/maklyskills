@@ -1,7 +1,12 @@
 # The project profile
 
-`.claude/flow-profile.md`, at the root of the working repository. Fixed
-headings, free text inside them.
+`<project-root>/.claude/flow-profile.md`. Fixed headings, free text inside them.
+
+This is the one file the pipeline writes into the repository, because it
+describes the repository rather than the person working on it: objective,
+short, and useful to anyone who opens the tree. Per-task working state goes in
+the ledger, outside the repository. Leave the profile untracked and leave the
+repository's ignore files alone.
 
 ## Schema
 

@@ -62,14 +62,27 @@ not an interview.
 underneath: review subagents are handed these sections verbatim, so the headings
 have to be predictable, while the content stays something a human can edit.
 
-**6. Tell the user where it is** and that it is worth committing if the team
-would benefit — but leave it untracked unless they say so. Their repository,
-their call.
+**6. Tell the user where it is** and that it is untracked. Do not add it to
+`.gitignore` or `.arcignore`: those are shared files, and editing one on your
+own initiative to hide a file you just created is a bigger intrusion than the
+untracked file itself. If they want it committed or ignored, they will say so.
+
+## Which directory is the project root
+
+The profile goes in `<project-root>/.claude/flow-profile.md`, and that location
+then *defines* the project root for everything else — the ledger path is derived
+from it. In a plain repository the root is obvious. In a monorepo it is not:
+prefer the directory the user actually works in (the service or package),
+not the top of a mount that contains thousands of unrelated projects. When two
+readings are both plausible, ask — this is one of the questions worth spending
+in step 4.
 
 ## Scope
 
 The profile describes the repository, not the task: commands, tooling,
-conventions, traps. Anything that changes per task belongs in the ledger.
+conventions, traps. Anything that changes per task belongs in the ledger, which
+lives outside the repository entirely — see
+`../flow/references/ledger.md`, relative to this skill's directory.
 
 Keep it to one screen. It is read at the start of every stage and pasted into
 every review subagent's context; a long profile is a tax paid on every

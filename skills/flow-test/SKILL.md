@@ -60,9 +60,10 @@ diff harder to review.
 
 ## Record it
 
-Append to `## Verification` in the ledger — `.claude/flow/<slug>/ledger.md`,
-schema in `../flow/references/ledger.md` relative to this skill's directory —
-the date, the exact command, and the result.
+Append to `## Verification` in the ledger —
+`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`, schema
+in `../flow/references/ledger.md` relative to this skill's directory — the date,
+the exact command, and the result.
 Later stages and review subagents read those lines to know what has actually
 been proven, and a stale one is worse than none.
 

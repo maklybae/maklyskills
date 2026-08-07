@@ -74,9 +74,10 @@ understand is a correct outcome — say so and move on.
 
 ## What you produce
 
-Create the ledger if it does not exist (schema:
-`../flow/references/ledger.md`, relative to this skill's directory) and fill in
-`## Task`. Then add the brief — in the conversation, and the durable parts in
+Create the ledger if it does not exist — it lives outside the repository at
+`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`, schema
+in `../flow/references/ledger.md` relative to this skill's directory — and fill
+in `## Task`. Then add the brief — in the conversation, and the durable parts in
 the ledger:
 
 - **The problem**, in the user's terms, in a few sentences.

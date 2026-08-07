@@ -79,8 +79,8 @@ reviewable.
 ## Record
 
 For each finding, append the verdict and its reason to the existing entry in the
-ledger — `.claude/flow/<slug>/ledger.md`, schema in
-`../flow/references/ledger.md` relative to this skill's directory. Never rewrite or delete the finding text: the settled list is what the
+ledger — `~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`,
+schema in `../flow/references/ledger.md` relative to this skill's directory. Never rewrite or delete the finding text: the settled list is what the
 next review round is handed, and it only works if it is complete.
 
 ## Deciding whether to loop

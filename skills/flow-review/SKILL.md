@@ -77,9 +77,10 @@ quota will fill it with noise.
 
 ## 5. Record and report
 
-Append each surviving finding to the ledger's `## Findings` with a fresh id, in
-the schema at `../flow/references/ledger.md` (relative to this skill's
-directory). Ids are never reused, so that "R7 is back" stays a meaningful
+Append each surviving finding to the ledger's `## Findings` with a fresh id —
+the ledger is at
+`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`, schema
+in `../flow/references/ledger.md` relative to this skill's directory. Ids are never reused, so that "R7 is back" stays a meaningful
 sentence.
 
 Report to the user compactly — id, severity, `file:line`, and the one-line

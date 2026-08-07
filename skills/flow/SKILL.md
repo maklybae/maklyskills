@@ -31,6 +31,10 @@ The shared artifact is the **ledger** — one file per task, described in
 when you finish a stage. It is what lets a cold session, or a reviewer subagent
 that knows nothing about you, act correctly.
 
+The ledger lives outside the repository, under `~/.claude/projects/`. The only
+file the pipeline ever writes into the repository itself is the project profile,
+because that one is about the repository rather than about you.
+
 ## The stages
 
 | # | Skill | Done when |
@@ -51,8 +55,9 @@ fixed number of rounds. `flow-resolve` owns the convergence rule.
 
 **New task** — start at `flow-explore`; it creates the ledger.
 
-**Resuming** — read `.claude/flow/<slug>/ledger.md`. Its `stage:` line says
-where the work stopped and its findings say what is still open. Do not
+**Resuming** — read the ledger for the task at
+`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/`. Its `stage:`
+line says where the work stopped and its findings say what is still open. Do not
 reconstruct state from the diff when a ledger exists.
 
 **A single stage** — if the user names one ("проревьюй", "почисти"), run just

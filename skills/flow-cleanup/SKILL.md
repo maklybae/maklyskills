@@ -30,8 +30,9 @@ what you surface. Do not restate its rules here or improvise a lighter version â
 invoke it.
 
 Whatever it flags as *behavioural* comes back as a finding for the ledger
-(`.claude/flow/<slug>/ledger.md`, schema in `../flow/references/ledger.md`
-relative to this skill's directory), not as an edit. That boundary is the whole
+(`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`,
+schema in `../flow/references/ledger.md` relative to this skill's directory),
+not as an edit. That boundary is the whole
 reason the split exists.
 
 ## Pass 2 â€” the tests

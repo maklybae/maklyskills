@@ -43,14 +43,19 @@ writes them to `.claude/flow-profile.md`.
 
 ## Two files carry the state
 
-**`.claude/flow-profile.md`** — per repository. Build, test, lint and codegen
-commands, VCS and base ref, whether specs are expected, which rule files bind,
-which traps to avoid. Written by `flow-setup` after it has watched the commands
-succeed.
+**`<project-root>/.claude/flow-profile.md`** — per repository. Build, test, lint
+and codegen commands, VCS and base ref, whether specs are expected, which rule
+files bind, which traps to avoid. Written by `flow-setup` after it has watched
+the commands succeed. This is the only file the pipeline puts in the repository,
+because it is about the repository; it stays untracked unless you decide
+otherwise, and the skills never touch your ignore files.
 
-**`.claude/flow/<slug>/ledger.md`** — per task. Current stage, decisions with
+**`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`** —
+per task, deliberately outside the repository. Current stage, decisions with
 their rejected alternatives, open questions, and every review finding with its
-verdict. The findings list is what makes the review loop converge: a finding
+verdict. It holds dead ends and "we consciously decided not to fix this", which
+is exactly the material that gets self-censored once it is visible in a shared
+tree. The findings list is what makes the review loop converge: a finding
 recorded as consciously accepted is not raised again.
 
 ## Adding a skill

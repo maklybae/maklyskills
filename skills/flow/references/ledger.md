@@ -1,12 +1,31 @@
 # The task ledger
 
-One file per task: `.claude/flow/<slug>/ledger.md`, where `<slug>` is a
-kebab-case name for the task (`add-vector-index`, `fix-retry-storm`).
+One file per task, **outside the repository**:
 
-It is deliberately *not* stored inside a spec directory. A spec artifact — an
-openspec change, an ADR, a PRD — is a product that ships with the pull request
-and is read by other people. The ledger is working state: verdicts, dead ends,
-what was consciously not fixed. Keep them apart and link the ledger to the spec.
+```
+~/.claude/projects/<project-root-with-slashes-as-dashes>/flow/<task-slug>/ledger.md
+```
+
+`<project-root-with-slashes-as-dashes>` is the absolute path of the project root
+with every `/` replaced by `-` — the same convention Claude Code already uses
+for its own per-project directories, so the ledger lands beside them. The
+project root is the directory that holds `.claude/flow-profile.md`; anchoring to
+it rather than to the current directory keeps the path stable whether the
+session started at the top of the tree or three levels down inside a service.
+
+`<task-slug>` is a kebab-case name for the task: `add-vector-index`,
+`fix-retry-storm`.
+
+**Why not in the repository.** The ledger is personal working state — dead ends,
+rejected findings, "we consciously decided not to fix this". In a shared tree
+that is both noise in everyone's `status` output and something you would
+eventually self-censor to keep it presentable, which would destroy its value.
+The profile is the opposite — objective, about the repository, useful to anyone
+— so that one does live in the repository.
+
+It is also deliberately not inside a spec directory. A spec artifact — an
+openspec change, an ADR, a PRD — ships with the pull request and is read by
+other people. Keep them apart and link the ledger to the spec.
 
 ## What it is for
 

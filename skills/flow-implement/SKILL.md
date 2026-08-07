@@ -16,10 +16,11 @@ description: >-
 
 ## Before writing anything
 
-Read, in this order: the ledger (`.claude/flow/<slug>/ledger.md`, schema in
-`../flow/references/ledger.md` relative to this skill's directory), the plan (or
-openspec change), the profile, the repository's rule files, and — completely —
-the file the current stage names as its **Model**. Skimming the model defeats the point: you are about to imitate
+Read, in this order: the ledger
+(`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`,
+schema in `../flow/references/ledger.md` relative to this skill's directory),
+the plan (or openspec change), the profile, the repository's rule files, and —
+completely — the file the current stage names as its **Model**. Skimming the model defeats the point: you are about to imitate
 it, and the parts worth imitating are the error handling and the invariants, not
 the shape you can guess from the signature.
 
