@@ -1,0 +1,17 @@
+{
+  "name": "maklyskills",
+  "version": "0.1.0",
+  "description": "Personal skill bundle: a stage-by-stage development pipeline (flow-*) that adapts to any repository, plus focused single-purpose skills.",
+  "author": {
+    "name": "Maxim Klychkov"
+  },
+  "license": "MIT",
+  "keywords": [
+    "workflow",
+    "pipeline",
+    "code-review",
+    "refactoring",
+    "planning",
+    "skills"
+  ]
+}

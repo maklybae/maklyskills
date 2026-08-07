@@ -1,0 +1,88 @@
+# The project profile
+
+`.claude/flow-profile.md`, at the root of the working repository. Fixed
+headings, free text inside them.
+
+## Schema
+
+```markdown
+# Flow profile
+
+## Stack
+Languages, frameworks, how the tree is laid out, where the code you touch lives.
+Two or three lines.
+
+## Commands
+- build: `<cmd> <dir>`
+- test (scoped): `<cmd> <dir>`
+- test (full): `<cmd>`
+- test (single): `<cmd> -run <name>`
+- lint: `<cmd> <dir>`
+- format: `<cmd>`
+- codegen: `<cmd>` — and what must never be hand-edited
+Each line is one copy-pasteable command with `<dir>`/`<name>` placeholders.
+Omit a line rather than inventing one; "none" is a legitimate value.
+
+## VCS
+- tool: git | arc | hg | none
+- base ref: the branch or revision changes are diffed against
+- diff vs base: `<cmd>`
+- ship: how a change reaches review here (commit → PR command, or "ask the user")
+
+## Spec workflow
+- openspec: none | roots: `<paths>`
+- other conventions: ADRs, PRDs, ticket links, where they live
+
+## Rules
+Files that constrain how code is written here, most authoritative first.
+Include the two or three rules that are most often violated by a fresh agent.
+
+## Constraints
+Traps someone new to this repository falls into: filesystem behaviour, search
+that must not be run, network restrictions, builds slow enough to change how you
+work.
+
+## Verified
+- <date> `<cmd>` → <result>
+```
+
+## Marker table
+
+Presence of a marker suggests the tooling; the ranking in `SKILL.md` decides
+when two markers disagree. A task runner or CI config beats the language default.
+
+| Marker | Likely toolchain | Notes |
+|---|---|---|
+| `ya.make`, `.arcadia.root`, `.arcignore` | Yandex Arcadia | `ya make <dir>` builds, `ya test -t <dir>` tests, `ya tool yo fix <dir>` fixes build manifests. Generated code and manifests are regenerated, not edited. Recursive search outside the project directory is unsafe on the FUSE mount |
+| `go.mod` | Go | `go build ./...`, `go test ./... -race`. In a monorepo the vendored/wrapped toolchain usually replaces the bare `go` binary — check the rule files |
+| `package.json` | Node | Read `scripts`; the lockfile names the package manager (`package-lock` → npm, `pnpm-lock` → pnpm, `yarn.lock` → yarn, `bun.lockb` → bun). Note any pinned Node version — installing under the wrong one rewrites the lock |
+| `pyproject.toml`, `setup.py`, `requirements.txt` | Python | `uv`/`poetry`/`hatch` from the `[tool]` tables; tests usually `pytest` |
+| `Cargo.toml` | Rust | `cargo build`, `cargo test`, `cargo clippy` |
+| `pom.xml`, `build.gradle(.kts)` | JVM | `mvn`/`gradle` wrappers (`./mvnw`, `./gradlew`) when present |
+| `Makefile`, `justfile`, `Taskfile.yml` | Task runner | Read the target list. In a repository that has one, this is usually the intended entry point |
+| `.github/workflows/*`, `.gitlab-ci.yml`, `a.yaml`, `.teamcity/` | CI | The strongest evidence of what must pass before a merge |
+| `.git` / `.arc` / `.hg` | VCS | Also note the default branch name — `main`, `master`, `trunk` |
+| `openspec/` with `config.yaml` | openspec | Record every root; in a monorepo they sit per service, not once at the top |
+| `specs/`, `docs/adr/`, `docs/rfc/` | Spec conventions | Note the format actually used in recent files, not the template |
+| `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `.claude/rules/`, `CONTRIBUTING.md` | Rule sources | List by authority; nested files override the root for their subtree |
+
+## Filling the sections well
+
+**Commands.** Prefer the narrowest form that still proves something. A profile
+whose only test command runs the entire monorepo will be skipped under time
+pressure, which is how unverified work ships. Give a scoped command and a full
+one, and let the stages choose.
+
+**Rules.** Do not summarise every rule file — point at them, then call out the
+two or three that a fresh agent breaks most often here. The value is in the
+surprises: a repository that forbids the standard JSON package, or that runs
+tests through a wrapper, or that regenerates a directory you would otherwise
+edit.
+
+**Constraints.** Write only what changes behaviour. "The repo is large" changes
+nothing; "recursive search outside the project directory hangs the filesystem"
+changes everything.
+
+**Verified.** One line per command you actually ran, with the real result. This
+section is the difference between a profile and a guess, and it is the first
+thing to re-check when a stage's command fails unexpectedly.

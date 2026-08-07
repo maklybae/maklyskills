@@ -1,0 +1,22 @@
+{
+  "name": "maklyskills",
+  "owner": {
+    "name": "Maxim Klychkov"
+  },
+  "description": "Personal Claude Code skills: a reusable development pipeline plus focused single-purpose skills.",
+  "plugins": [
+    {
+      "name": "maklyskills",
+      "source": "./",
+      "description": "Development pipeline skills (explore, plan, implement, test, cleanup, review, resolve) and focused skills such as anti-slop-code.",
+      "category": "engineering",
+      "keywords": [
+        "workflow",
+        "pipeline",
+        "code-review",
+        "refactoring",
+        "planning"
+      ]
+    }
+  ]
+}
