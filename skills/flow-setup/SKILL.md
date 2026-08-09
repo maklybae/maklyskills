@@ -63,9 +63,9 @@ underneath: review subagents are handed these sections verbatim, so the headings
 have to be predictable, while the content stays something a human can edit.
 
 **6. Tell the user where it is** and that it is untracked. Do not add it to
-`.gitignore` or `.arcignore`: those are shared files, and editing one on your
-own initiative to hide a file you just created is a bigger intrusion than the
-untracked file itself. If they want it committed or ignored, they will say so.
+`.gitignore`, or whatever the repository's ignore file is: those are shared
+files, and editing one on your own initiative to hide a file you just created is
+a bigger intrusion than the untracked file itself. If they want it committed or ignored, they will say so.
 
 ## Which directory is the project root
 

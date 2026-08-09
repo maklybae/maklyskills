@@ -109,9 +109,10 @@ you would otherwise have:
   inside this change, the run stops and reports rather than continuing. Lowering
   a severity so that the loop can finish is the one move that turns an honest
   unattended run into a dishonest one.
-- **The loop gets a budget**, three rounds by default. Convergence is the goal,
-  but an unconverged run that stops and says what is still open is far more
-  useful than one that spends the night rewording minor findings.
+- **The loop gets a budget** — the `budget:` in the ledger header, or three
+  rounds when it does not set one. Convergence is the goal, but an unconverged
+  run that stops and says what is still open is far more useful than one that
+  spends the night rewording minor findings.
 
 Everything else is unchanged: verdicts still get reasons, and the closing report
 still leads with what was consciously accepted — with an unattended run it is

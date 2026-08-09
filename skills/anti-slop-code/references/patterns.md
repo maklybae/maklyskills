@@ -409,7 +409,7 @@ gap; suggest the missing guard.
 flags, and especially credentials (`password = "admin123"`,
 `api_key = "test_key_replace_this"`). Flag; do not "tidy" a secret in place.
 
-**7.5 Injection-prone queries and missing auth.** SQL/YQL built by string
+**7.5 Injection-prone queries and missing auth.** SQL built by string
 concatenation or f-strings with user input; endpoints missing an auth/permission
 check that peers have. Flag with a parameterized-query / add-the-check suggestion.
 

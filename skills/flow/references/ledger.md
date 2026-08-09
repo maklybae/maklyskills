@@ -45,14 +45,14 @@ It is a ledger, not a diary: no narration of what you did, no restating the diff
 ## Schema
 
 ```markdown
-# Add vector index to infra events
+# Add vector index to document events
 
 - slug: add-vector-index
 - stage: review (round 2)
-- mode: unattended, ends at commit                              # omit when interactive
-- branch: users/mdk/add-vector-index
-- base: trunk@a1b2c3d
-- spec: openspec change `add-vector-index` in backend/harness   # or: none
+- mode: unattended, ends at commit, budget: 5 rounds  # omit when interactive; budget only when the user set one
+- branch: feature/vector-index
+- base: main@a1b2c3d
+- spec: openspec change `add-vector-index` in services/search   # or: none
 
 ## Task
 Two to five sentences: what is being built and why. Written during explore,
@@ -61,7 +61,8 @@ edited only when the scope actually changes.
 ## Decisions
 - D1 (plan) Bytes in S3, metadata in YDB. A single YDB blob column was rejected:
   rows would exceed the 8 MB limit for real documents.
-- D2 (implement) Reused `sqx.TransactionManager` rather than a new helper.
+- D2 (implement) Reused the repository's existing transaction helper rather than
+  adding another one.
 
 ## Open questions
 - Q1 Does the sync worker need its own lease, or can it reuse the keeper's?
@@ -71,18 +72,18 @@ edited only when the scope actually changes.
   was taken and this leads the final report.
 
 ## Findings
-### R4 · blocker · correctness · backend/vfs/repository.go:88
+### R4 · blocker · correctness · internal/storage/repository.go:88
 Two concurrent Upserts on the same key lose the newer row: read-modify-write
 outside a transaction.
-Verdict: fixed — wrapped in `TransactionManager`, test `TestUpsertConcurrent`.
+Verdict: fixed — wrapped in a transaction, test `TestUpsertConcurrent`.
 
-### R5 · minor · tests · backend/vfs/repository_test.go:12
+### R5 · minor · tests · internal/storage/repository_test.go:12
 No case for an empty digest.
 Verdict: accepted — the only caller validates the digest at the transport layer,
 so a test here pins a state that cannot occur.
 
 ## Verification
-- 2026-08-07 `ya test -t backend/vfs --race` → 41 passed, 0 failed
+- 2026-08-07 `go test ./internal/storage/... -race` → 41 passed, 0 failed
 ```
 
 ## Rules that matter

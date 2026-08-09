@@ -19,10 +19,26 @@ description: >-
 Read, in this order: the ledger
 (`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`,
 schema in `../flow/references/ledger.md` relative to this skill's directory),
-the plan (or openspec change), the profile, the repository's rule files, and —
+the plan (or openspec change; when none exists, see below), the profile, the
+repository's rule files, and —
 completely — the file the current stage names as its **Model**. Skimming the model defeats the point: you are about to imitate
 it, and the parts worth imitating are the error handling and the invariants, not
 the shape you can guess from the signature.
+
+## When there is no plan
+
+The description admits tasks small enough to skip planning. Small does not
+suspend the loop — it collapses the plan to a single stage you write yourself
+before touching code: the files you will change, the model file to imitate, the
+verify command from the profile. Say those three lines to the user first; that
+is the plan gate, at the price this task deserves. If you cannot fill the three
+slots without going searching, the task was not small — run flow-explore and
+flow-plan instead of discovering that mid-edit.
+
+The ledger follows the same economy. Create it the moment the work produces
+anything a later stage or session will need — a decision, a finding, a review
+round ahead — and skip it, saying so, for a mechanical edit that nothing will
+ever resume. The umbrella skill's skipping rule applies unchanged.
 
 ## The per-stage loop
 

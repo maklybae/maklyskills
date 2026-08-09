@@ -29,7 +29,7 @@ Each line is one copy-pasteable command with `<dir>`/`<name>` placeholders.
 Omit a line rather than inventing one; "none" is a legitimate value.
 
 ## VCS
-- tool: git | arc | hg | none
+- tool: git | hg | svn | jj | none
 - base ref: the branch or revision changes are diffed against
 - diff vs base: `<cmd>`
 - ship: how a change reaches review here (commit → PR command, or "ask the user")
@@ -58,15 +58,16 @@ when two markers disagree. A task runner or CI config beats the language default
 
 | Marker | Likely toolchain | Notes |
 |---|---|---|
-| `ya.make`, `.arcadia.root`, `.arcignore` | Yandex Arcadia | `ya make <dir>` builds, `ya test -t <dir>` tests, `ya tool yo fix <dir>` fixes build manifests. Generated code and manifests are regenerated, not edited. Recursive search outside the project directory is unsafe on the FUSE mount |
-| `go.mod` | Go | `go build ./...`, `go test ./... -race`. In a monorepo the vendored/wrapped toolchain usually replaces the bare `go` binary — check the rule files |
+| `BUILD.bazel`, `WORKSPACE`, `MODULE.bazel`, `BUCK`, `pants.toml` | Bazel / Buck / Pants | Work in targets, not directories, and prefer the repo's wrapper (`./bazelw`, `./pants`) over a globally installed binary. Build manifests are usually generated, not hand-edited — find the command that regenerates them |
+| A build/test CLI checked into the repo and referenced by its docs or CI | House toolchain | Large repositories often front the whole toolchain with one command of their own. When there is one, the language default is the wrong entry point. Note what it regenerates, and any restriction it places on searching the tree |
+| `go.mod` | Go | `go build ./...`, `go test ./... -race`. In a monorepo the vendored or wrapped toolchain often replaces the bare `go` binary — check the rule files |
 | `package.json` | Node | Read `scripts`; the lockfile names the package manager (`package-lock` → npm, `pnpm-lock` → pnpm, `yarn.lock` → yarn, `bun.lockb` → bun). Note any pinned Node version — installing under the wrong one rewrites the lock |
 | `pyproject.toml`, `setup.py`, `requirements.txt` | Python | `uv`/`poetry`/`hatch` from the `[tool]` tables; tests usually `pytest` |
 | `Cargo.toml` | Rust | `cargo build`, `cargo test`, `cargo clippy` |
 | `pom.xml`, `build.gradle(.kts)` | JVM | `mvn`/`gradle` wrappers (`./mvnw`, `./gradlew`) when present |
 | `Makefile`, `justfile`, `Taskfile.yml` | Task runner | Read the target list. In a repository that has one, this is usually the intended entry point |
-| `.github/workflows/*`, `.gitlab-ci.yml`, `a.yaml`, `.teamcity/` | CI | The strongest evidence of what must pass before a merge |
-| `.git` / `.arc` / `.hg` | VCS | Also note the default branch name — `main`, `master`, `trunk` |
+| `.github/workflows/*`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/config.yml`, `azure-pipelines.yml`, `.teamcity/` | CI | The strongest evidence of what must pass before a merge |
+| `.git` / `.hg` / `.svn` / `.jj` | VCS | Also note the default branch name — `main`, `master`, `trunk`, `develop` |
 | `openspec/` with `config.yaml` | openspec | Record every root; in a monorepo they sit per service, not once at the top |
 | `specs/`, `docs/adr/`, `docs/rfc/` | Spec conventions | Note the format actually used in recent files, not the template |
 | `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/`, `.claude/rules/`, `CONTRIBUTING.md` | Rule sources | List by authority; nested files override the root for their subtree |

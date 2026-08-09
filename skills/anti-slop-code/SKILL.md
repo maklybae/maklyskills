@@ -75,14 +75,14 @@ codebase* would have written: no more, no less.
 ## Workflow
 
 1. **Scope.** Establish what to clean: the pasted snippet, named files, or a diff
-   (`git (or arc) diff`, branch-vs-main). If the user is de-slopping recent work,
+   (`git diff`, branch-vs-main). If the user is de-slopping recent work,
    prefer the diff — clean what changed, not the whole tree.
 
 2. **Pre-scan.** Run the deterministic scanner to get cheap, high-recall
    candidates before reading:
    ```
    python3 scripts/scan_slop.py <files-or-dir>
-   git (or arc) diff --name-only | python3 scripts/scan_slop.py --stdin-list
+   git diff --name-only | python3 scripts/scan_slop.py --stdin-list
    ```
    Treat every hit as a *candidate*, never a verdict. The scanner is blind to
    over-abstraction, wrong abstractions, and happy-path logic — those only come

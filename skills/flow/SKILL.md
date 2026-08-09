@@ -98,30 +98,23 @@ unrecoverable rather than merely wrong:
   pull request opened. Silence means stop at the tree: an outward-facing action
   does not become authorised by the fact that nobody was watching.
 
-Record both in the ledger header — `mode: unattended, ends at <boundary>` — so a
-session that resumes the work, and the user reading it in the morning, know
-which rules the run was operating under.
+Record both in the ledger header — `mode: unattended, ends at <boundary>`, plus
+`budget: N rounds` when the user named one — so a session that resumes the work,
+and the user reading it in the morning, know which rules the run was operating
+under.
 
 **The three gates do not vanish when nobody can answer. They change shape.**
 
-- **A blocker is fixed or the run stops.** Silent acceptance is not available to
-  you: the only thing worse than an unfinished run is a finished one that shipped
-  a known defect. Never downgrade a severity so that the run can complete —
-  that is the exact failure this rule exists to prevent.
+- **A blocker is fixed or the run stops, and the review loop runs on a round
+  budget.** Both rules and the budget's default are `flow-resolve`'s — apply
+  them unchanged.
 - **A question you cannot ask is not permission to guess quietly.** Do
   everything that does not depend on the answer, take the most conservative
-  reading of what remains, write the assumption into the ledger as an open
-  question, and **lead the final report with those assumptions**. A stated
-  assumption costs a paragraph to correct; a buried one costs the
-  implementation.
-- **Scope stays where the plan put it.** Unattended runs are where creep is
-  invisible, because there is nobody to notice the change growing. Anything you
-  discover outside the plan becomes a ledger entry, not an edit.
-
-**Budget the loop.** Review and resolve is the only unbounded part of the
-pipeline, and at night there is nobody to call it. Three rounds is a sensible
-default; if it has not converged by then, stop and report what is still open
-rather than spending hours narrowing minor findings.
+  reading of what remains, and record it as `ASSUMED` — the ledger schema owns
+  that protocol, and the closing report leads with those entries.
+- **Scope stays where the plan put it.** `flow-implement`'s scope rule, binding
+  harder at night: creep is invisible when nobody is watching, so anything
+  discovered outside the plan becomes a ledger entry, not an edit.
 
 One practical check before promising to run to the end: an unattended run is
 only unattended if the session will not stop to ask permission for each edit and
@@ -132,5 +125,5 @@ sits idle is worse than one that never started.
 
 Nothing in these skills hardcodes a build system, a VCS, or a test runner. Those
 live in `.claude/flow-profile.md`, written once by `flow-setup`. If a stage needs
-a command and the profile is missing, create it first — a stage that guesses at
-`npm test` in a repository that uses something else produces confident garbage.
+a command and the profile is missing, run `flow-setup` first — it owns the
+argument for why a guessed command is worse than a missing one.

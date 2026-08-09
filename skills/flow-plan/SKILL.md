@@ -44,14 +44,14 @@ find it.
 ```markdown
 ### Stage 3: Delete files by id list
 
-**Do:** add `DeleteByIDList(ctx, ids []string) error` to `vfs.Repository` and
-to both the YDB and in-memory implementations; soft-delete by setting
+**Do:** add `DeleteByIDList(ctx, ids []string) error` to `files.Repository` and
+to both the SQL and in-memory implementations; soft-delete by setting
 `DeletedAt`, keep the rows.
-**Files:** `backend/vfs/internal/repositories/files/repository.go` — interface;
-`.../ydb.go`, `.../mem.go` — implementations.
-**Model:** `backend/core/internal/repositories/asyncworkflows/ydb.go` — batched
-delete with named parameters, same shape.
-**Verify:** `ya test -t backend/vfs/internal/repositories/files`
+**Files:** `internal/repositories/files/repository.go` — interface;
+`.../sql.go`, `.../mem.go` — implementations.
+**Model:** `internal/repositories/workflows/sql.go` — batched delete with named
+parameters, same shape.
+**Verify:** `go test ./internal/repositories/files/...`
 ```
 
 What makes stages like that work:
