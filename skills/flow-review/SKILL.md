@@ -50,8 +50,10 @@ Pick the lens set from [references/lenses.md](references/lenses.md) — the five
 defaults unless the change or the user calls for more. Fill
 [references/reviewer-prompt.md](references/reviewer-prompt.md) once per lens and
 send **all of the Agent calls in a single message** so they run concurrently.
-Use the `general-purpose` subagent type; reviewers read and run commands, they
-never edit.
+Dispatch each lens as a `flow-reviewer` agent — the bundle ships it, and its
+tool set carries no edit tools, so read-only is a property rather than a
+promise. Where the bundle's agents are not installed, fall back to
+`general-purpose`; either way reviewers read and run commands, they never edit.
 
 The prompt template carries the parts that decide review quality: findings must
 be proven before they are reported, findings are capped and ranked, and finding

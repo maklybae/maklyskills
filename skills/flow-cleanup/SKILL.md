@@ -20,6 +20,25 @@ change.** Everything here is deletion, inlining, or renaming. A hunk that
 changes what the program does belongs to implement or resolve — smuggling it in
 under "cleanup" is how a tidy-up ships a bug.
 
+## Run it at arm's length
+
+Dispatch this stage to one fresh subagent instead of doing it in your own
+context. The reason is the one flow-review gives for its reviewers: you wrote
+this code, and the comments and scaffolding you left are the ones you still
+believe in — an author deletes less than the doctrine asks, and by the end of a
+long task the context doing the deleting is also the most expensive one to
+spend. A fresh reader owes the diff nothing.
+
+Dispatch it as a `flow-cleaner` agent — the bundle ships it, and its tool set
+cannot dispatch agents of its own, so the recursion this section would
+otherwise invite is closed by construction. Where the bundle's agents are not
+installed, fall back to `general-purpose`. Give the subagent: this skill and
+anti-slop-code, the profile, the diff command from its `## VCS` section, and
+the ledger path for the flags. It edits, re-runs the full verification, and
+returns the report from Finish below; you carry its behavioural flags into the
+ledger. If you are that subagent — the dispatch named you the cleaner — skip
+this section and do the passes.
+
 ## Pass 1 — the code
 
 Run the `anti-slop-code` skill on the diff — it ships in this bundle, so when
