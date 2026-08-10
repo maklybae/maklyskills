@@ -1,0 +1,9 @@
+inventory: hold and release stock under one store lock
+
+Reserve read every level, checked it, and wrote it back with SetLevel, so two
+reservations that each fit on their own could both pass the check and take the
+shelf below zero. We oversold the last monitor arm twice this month.
+
+The check and the write now happen inside one store call under one lock. The
+regression test runs forty single item reservations against ten on hand and
+expects exactly ten of them to be accepted.

@@ -1,0 +1,1 @@
+inventory: add the stock service

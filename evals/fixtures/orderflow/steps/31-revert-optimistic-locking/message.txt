@@ -1,0 +1,13 @@
+Revert "orders: guard the memory store with optimistic locking"
+
+This reverts commit __REVERT_SHA__.
+
+The version check bought less than it cost. A lost update needs two writes to
+the same order within a few milliseconds, which here means the payment callback
+and the warehouse touching one order in the same second; that has happened twice
+since September. The retry loop it forced on callers deadlocked every couple of
+days instead: two callers reloading each other's orders, both retrying, neither
+getting through.
+
+Keep the single mutex until the store is something other than a map in this
+process.

@@ -1,0 +1,4 @@
+services/orders/openspec/changes/add-cancel-order/proposal.md
+services/orders/openspec/changes/add-cancel-order/tasks.md
+services/orders/openspec/changes/add-cancel-order/specs/order-lifecycle/spec.md
+services/orders/openspec/changes/add-cancel-order/specs/stock-reservations/spec.md

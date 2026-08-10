@@ -1,0 +1,1 @@
+inventory: add stock levels and the store interface

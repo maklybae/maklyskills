@@ -1,0 +1,5 @@
+orders: add a json file backend for the store
+
+Restarting the service threw away every order, which made testing anything
+that spans a restart tedious. The document is rewritten through a temporary
+file so a crash cannot leave half of it behind.

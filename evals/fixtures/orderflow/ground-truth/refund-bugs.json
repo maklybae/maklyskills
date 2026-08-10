@@ -1,0 +1,905 @@
+[
+  {
+    "id": "B1",
+    "kind": "bug",
+    "lens": "correctness",
+    "severity": "serious",
+    "title": "refund admits an order nobody has paid for",
+    "description": "refundable() accepts StatusPending alongside paid, shipped and delivered, so a refund can be issued against an order that was never charged. Trigger: POST /orders/{id}/refund on an order still in pending, the state every order is created in. The refund is recorded and flows into the finance export, so money leaves for a payment that never arrived. The change's own spec delta says pending must be refused.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 156,
+    "end_line": 163,
+    "snippet": "func refundable(order Order) error {\n\tswitch order.Status {\n\tcase StatusPending, StatusPaid, StatusShipped, StatusDelivered:\n\t\treturn nil\n\tdefault:\n\t\treturn xerrors.Wrapf(ErrNotRefundable, \"order %s is %s\", order.ID, order.Status)\n\t}\n}",
+    "witness": "witnesses/b1_pending_order_is_not_refundable_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "B2",
+    "kind": "bug",
+    "lens": "correctness",
+    "severity": "serious",
+    "title": "a partial refund is pro-rated over units instead of priced from the lines",
+    "description": "refundAmount() divides the order value by the units on the order and multiplies by the units returned, so every line is refunded at the order's average price and the division truncates. Trigger: return one 900 cable tray from an order that also holds a 4900 desk lamp and the customer is refunded 1900. The spec delta says a refund is worth the returned lines at the price the order paid.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 175,
+    "end_line": 195,
+    "snippet": "func refundAmount(order Order, lines []Item) (int64, error) {\n\tif len(lines) == 0 {\n\t\treturn linesValue(order.Items) - order.Refunded(), nil\n\t}\n\n\tunits, returned := 0, 0\n\tfor _, item := range order.Items {\n\t\tunits += item.Quantity\n\t}\n\tfor _, line := range lines {\n\t\titem, ok := itemOf(order, line.SKU)\n\t\tif !ok {\n\t\t\treturn 0, invalid(\"lines\", \"sku \"+line.SKU+\" is not on order \"+order.ID)\n\t\t}\n\t\tif line.Quantity > item.Quantity {\n\t\t\treturn 0, invalid(\"lines\", \"order \"+order.ID+\" holds fewer \"+line.SKU+\" than that\")\n\t\t}\n\t\treturned += line.Quantity\n\t}\n\treturn linesValue(order.Items) * int64(returned) / int64(units), nil\n}",
+    "witness": "witnesses/b2_partial_refund_prices_the_lines_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "B3",
+    "kind": "bug",
+    "lens": "correctness",
+    "severity": "blocker",
+    "title": "the refund ceiling ignores what has already been given back",
+    "description": "The ceiling is the whole order value rather than the value less the refunds already recorded. Trigger: refund the same line twice under two keys; each passes the ceiling on its own and the total given back grows without bound. The spec delta states that the sum of the refunds of an order must not exceed what it was worth.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 82,
+    "end_line": 86,
+    "snippet": "\tleft := linesValue(order.Items)\n\tif amount > left {\n\t\treturn Refund{}, xerrors.Wrapf(ErrRefundTooLarge,\n\t\t\t\"refund %d of order %s, %d left\", amount, order.ID, left)\n\t}",
+    "witness": "witnesses/b3_refunds_stop_at_the_order_value_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "B4",
+    "kind": "bug",
+    "lens": "integration",
+    "severity": "serious",
+    "title": "Order.Total() quietly changes meaning for every caller",
+    "description": "Total() subtracts what has been refunded, but its callers ask it for the order value: the API reports it as the order's `total`. Trigger: refund one line, then GET /orders/{id} - the total shrinks, so a client comparing it against the line prices sees an order that does not add up. What has gone back is already available as Refunded().",
+    "file_path": "services/orders/internal/core/order.go",
+    "start_line": 39,
+    "end_line": 43,
+    "snippet": "// Total is what the order is worth in minor units, less what has been\n// refunded.\nfunc (o Order) Total() int64 {\n\treturn linesValue(o.Items) - o.Refunded()\n}",
+    "witness": "witnesses/b4_order_total_is_the_order_value_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "B5",
+    "kind": "bug",
+    "lens": "integration",
+    "severity": "blocker",
+    "title": "renaming the unit price tag orphans every order already on disk",
+    "description": "Item.UnitPrice moves from `unit_price` to `unit_amount`, and core.Order is what the jsonfile backend writes. Trigger: run with -store jsonfile against a document written by an earlier build - every unit price decodes as zero, so totals, ceilings and the finance export are wrong. Nothing migrates the documents and the API has its own payload type, so the rename buys nothing.",
+    "file_path": "services/orders/internal/core/order.go",
+    "start_line": 10,
+    "end_line": 14,
+    "snippet": "type Item struct {\n\tSKU       string `json:\"sku\"`\n\tQuantity  int    `json:\"quantity\"`\n\tUnitPrice int64  `json:\"unit_amount\"`\n}",
+    "witness": "witnesses/b5_stored_orders_keep_their_prices_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "B6",
+    "kind": "bug",
+    "lens": "robustness",
+    "severity": "serious",
+    "title": "the stock return is sent outside the configured client",
+    "description": "Restock() builds its own request through http.Post, so it runs on http.DefaultClient: no timeout, no request id header, none of the wiring its neighbours Reserve and Release get from the client's post helper. Trigger: inventory accepts the connection and stops answering - the refund handler blocks on that socket for as long as the peer keeps it open, and nothing in the logs ties the call to the request that made it.",
+    "file_path": "services/orders/internal/inventory/client.go",
+    "start_line": 94,
+    "end_line": 117,
+    "snippet": "func (c *Client) Restock(_ context.Context, ret core.StockReturn) error {\n\tlines := make([]linePayload, 0, len(ret.Lines))\n\tfor _, line := range ret.Lines {\n\t\tlines = append(lines, linePayload{SKU: line.SKU, Quantity: line.Quantity})\n\t}\n\n\tbody, err := json.Marshal(returnPayload{OrderID: ret.OrderID, Lines: lines})\n\tif err != nil {\n\t\treturn xerrors.Wrap(err, \"encode request for inventory /stock/returns\")\n\t}\n\n\tresp, err := http.Post(c.baseURL+\"/stock/returns\", \"application/json\", bytes.NewReader(body))\n\tif err != nil {\n\t\treturn xerrors.Wrap(err, \"call inventory /stock/returns\")\n\t}\n\tdefer func() {\n\t\t_ = resp.Body.Close()\n\t}()\n\n\tif resp.StatusCode >= 200 && resp.StatusCode < 300 {\n\t\treturn nil\n\t}\n\treturn responseError(\"/stock/returns\", resp)\n}",
+    "witness": "witnesses/b6_return_goes_through_the_client_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "B7",
+    "kind": "bug",
+    "lens": "robustness",
+    "severity": "serious",
+    "title": "the stock return is retried although inventory does not key returns",
+    "description": "returnStock() sends the return up to three times until one call reports success. POST /stock/returns counts what it is given and has no key, which the spec delta and the inventory service both state. Trigger: inventory books the return and the answer is lost - the retry adds the same units again and the shelf shows stock that is not there.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 115,
+    "end_line": 133,
+    "snippet": "// returnStock sends the refunded lines back, giving inventory a couple more\n// goes when it is having a bad minute.\nfunc (s *Service) returnStock(ctx context.Context, order Order, refund Refund) error {\n\t// A refund that names no lines is money only: nothing came back to shelve.\n\tif len(refund.Lines) == 0 {\n\t\treturn nil\n\t}\n\n\tret := StockReturn{OrderID: order.ID, Lines: refund.Lines}\n\n\tvar err error\n\tfor attempt := 0; attempt < restockAttempts; attempt++ {\n\t\terr = s.inventory.Restock(ctx, ret)\n\t\tif err == nil {\n\t\t\treturn nil\n\t\t}\n\t}\n\treturn xerrors.Wrapf(err, \"return the lines of refund %s\", refund.ID)\n}",
+    "witness": "witnesses/b7_return_is_sent_once_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "B8",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "the refund test asserts the amount against the amount it just stored",
+    "description": "The only assertion the table makes about money compares the refund the service returned with the total the service recorded from that same refund, so it holds for any amount, zero included. No test in the branch pins a refund to an expected number of minor units, which is why the pro-rating goes unnoticed.",
+    "file_path": "services/orders/internal/core/refund_test.go",
+    "start_line": 120,
+    "end_line": 122,
+    "snippet": "\t\t\tif stored.Refunded() != refund.Amount {\n\t\t\t\tt.Errorf(\"the order records %d, the refund says %d\", stored.Refunded(), refund.Amount)\n\t\t\t}",
+    "witness": "witnesses/b8_amount_is_covered.sh",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "B9",
+    "kind": "bug",
+    "lens": "security",
+    "severity": "serious",
+    "title": "the refund endpoint answers with the internal error text",
+    "description": "The refund handler maps errors itself and passes err.Error() into the response instead of calling h.fail, which every other handler uses and which answers 'internal error' for anything it does not recognise. Trigger: any failure below the handler comes back as a 500 carrying the wrapped chain - store wording, host and port of a dependency, order ids.",
+    "file_path": "services/orders/internal/api/orders.go",
+    "start_line": 144,
+    "end_line": 167,
+    "snippet": "// refund answers with the refund itself rather than the order: the caller wants\n// the amount and the id it can quote to the customer.\nfunc (h *handler) refund(w http.ResponseWriter, r *http.Request) {\n\tvar payload refundPayload\n\tif err := httputil.Decode(r, &payload); err != nil {\n\t\thttputil.WriteError(w, http.StatusBadRequest, \"invalid_request\", err.Error())\n\t\treturn\n\t}\n\n\tlines := make([]core.Item, 0, len(payload.Lines))\n\tfor _, line := range payload.Lines {\n\t\tlines = append(lines, core.Item{SKU: line.SKU, Quantity: line.Quantity})\n\t}\n\n\torderID := r.PathValue(\"id\")\n\trequest := core.RefundRequest{OrderID: orderID, Key: payload.Key, Reason: payload.Reason, Lines: lines}\n\trefund, err := h.orders.RefundOrder(r.Context(), request)\n\tif err != nil {\n\t\t// Support asked to see why a refund bounced without opening the logs.\n\t\thttputil.WriteError(w, refundStatus(err), refundCode(err), err.Error())\n\t\treturn\n\t}\n\thttputil.WriteJSON(w, http.StatusOK, refundViewOf(orderID, refund))\n}",
+    "witness": "witnesses/b9_refund_failure_keeps_internals_quiet_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X1",
+    "kind": "bug",
+    "lens": "correctness",
+    "severity": "serious",
+    "title": "the key is checked outside the lock that protects the write",
+    "description": "The gate is taken around the append and the store write, but the key check, the ceiling and the amount are decided before it. Two requests with one key that overlap both find no refund, both compute one and both go through the gate in turn, so the customer is paid twice and inventory is told twice; the second write also drops the first refund record. Trigger: support double-clicks, or a client retries while the first call is in flight - the case the key exists for.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 98,
+    "end_line": 105,
+    "snippet": "\t// Hold the order while it is written so two refunds cannot land on top of\n\t// each other.\n\tleave := s.refunds.enter(req.OrderID)\n\torder.Refunds = append(order.Refunds, refund)\n\torder.UpdatedAt = issuedAt\n\terr = s.store.Update(ctx, order)\n\tleave()\n\tif err != nil {",
+    "witness": "witnesses/x1_one_key_pays_once_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X2",
+    "kind": "bug",
+    "lens": "security",
+    "severity": "minor",
+    "title": "a refund of nothing is recorded, again and again",
+    "description": "The ceiling compares with a strict greater-than, so an amount of zero always passes. Once an order is fully refunded, a request naming no lines is worth zero and still appends a record holding the caller's key and up to 500 characters of reason; the key itself has no length bound beyond the 1 MB body cap. Trigger: POST a fresh key at a fully refunded order, repeatedly - the document grows without bound and is rewritten whole on every write. Shares its location with B3: that is the ceiling ignoring prior refunds, this is the ceiling admitting a refund that moves no money.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 82,
+    "end_line": 86,
+    "snippet": "\tleft := linesValue(order.Items)\n\tif amount > left {\n\t\treturn Refund{}, xerrors.Wrapf(ErrRefundTooLarge,\n\t\t\t\"refund %d of order %s, %d left\", amount, order.ID, left)\n\t}",
+    "witness": "witnesses/x2_nothing_left_is_refused_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X6",
+    "kind": "bug",
+    "lens": "integration",
+    "severity": "serious",
+    "title": "the return shelves units that never left the warehouse",
+    "description": "returnStock() restocks for every refundable status, so a refund of an order that has only been paid for puts units on the shelf that never left. Nothing in inventory lowers OnHand outside the cancel path, so those units are counted twice: once as reserved for that order, once as fresh stock. Trigger: refund a line of a paid order and read /stock/{sku} - on hand has grown although the parcel never left the warehouse. Shares its location with B7; that is the retry, this is what the call does at all. That the refund path sends no Release is a separate claim and a decoy, D8.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 115,
+    "end_line": 133,
+    "snippet": "// returnStock sends the refunded lines back, giving inventory a couple more\n// goes when it is having a bad minute.\nfunc (s *Service) returnStock(ctx context.Context, order Order, refund Refund) error {\n\t// A refund that names no lines is money only: nothing came back to shelve.\n\tif len(refund.Lines) == 0 {\n\t\treturn nil\n\t}\n\n\tret := StockReturn{OrderID: order.ID, Lines: refund.Lines}\n\n\tvar err error\n\tfor attempt := 0; attempt < restockAttempts; attempt++ {\n\t\terr = s.inventory.Restock(ctx, ret)\n\t\tif err == nil {\n\t\t\treturn nil\n\t\t}\n\t}\n\treturn xerrors.Wrapf(err, \"return the lines of refund %s\", refund.ID)\n}",
+    "witness": "witnesses/x6_unshipped_goods_are_not_shelved_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X7",
+    "kind": "bug",
+    "lens": "correctness",
+    "severity": "serious",
+    "title": "returned quantities are never netted against earlier refunds",
+    "description": "A refund line is checked against the quantity the order was placed with and against nothing else; no refund records how many units of a sku have already come back. Trigger: refund the three cable trays of an order under one key, then the same three under another - both pass and inventory is asked twice to shelve three trays, so six units land on the shelf for an order that held three. Shares a function with B2 and D2: this is the absence of a per-line ledger across refunds, not the pricing rule and not the missing quantity guard.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 185,
+    "end_line": 192,
+    "snippet": "\t\titem, ok := itemOf(order, line.SKU)\n\t\tif !ok {\n\t\t\treturn 0, invalid(\"lines\", \"sku \"+line.SKU+\" is not on order \"+order.ID)\n\t\t}\n\t\tif line.Quantity > item.Quantity {\n\t\t\treturn 0, invalid(\"lines\", \"order \"+order.ID+\" holds fewer \"+line.SKU+\" than that\")\n\t\t}\n\t\treturned += line.Quantity",
+    "witness": "witnesses/x7_returned_units_are_counted_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X8",
+    "kind": "bug",
+    "lens": "correctness",
+    "severity": "serious",
+    "title": "a fully refunded order still ships",
+    "description": "A refund records money and stock and leaves the status where it was, and no transition asks what has been refunded: advance() gates on status alone, so MarkShipped accepts any paid order. Trigger: refund a paid order in full and let the warehouse mark it shipped - the goods leave for an order that has been paid back, and because it is now shipped the cancel path refuses it, so its reservation is never released either.",
+    "file_path": "services/orders/internal/core/service.go",
+    "start_line": 156,
+    "end_line": 159,
+    "snippet": "// MarkShipped records that the warehouse handed the order over to the carrier.\nfunc (s *Service) MarkShipped(ctx context.Context, id string) (Order, error) {\n\treturn s.advance(ctx, id, StatusShipped, []Status{StatusPaid}, ErrNotShippable)\n}",
+    "witness": "witnesses/x8_refunded_orders_do_not_ship_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X9",
+    "kind": "bug",
+    "lens": "robustness",
+    "severity": "serious",
+    "title": "work that has to outlive the request is tied to the request",
+    "description": "The stock return is sent after the refund is committed, on the caller's context. Trigger: the client hangs up, or a proxy times the request out, between the store write and the return - the return is cancelled by our own context, and because a repeat with the same key answers from the stored refund without re-sending, that return can never be made again. The spec's backstop covers a peer that refuses or does not answer, not a follow-up the service abandons because the caller left. Observable through the core flow with a cancelled context; at the client level B6 masks it, since http.Post ignores the context altogether.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 109,
+    "end_line": 111,
+    "snippet": "\tif err := s.returnStock(ctx, order, refund); err != nil {\n\t\treturn refund, err\n\t}",
+    "witness": "witnesses/x9_committed_return_outlives_the_caller_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X10",
+    "kind": "bug",
+    "lens": "integration",
+    "severity": "serious",
+    "title": "the refund ledger only exists inside the order document",
+    "description": "Refunds are stored as a field of the order and nowhere else, and the file backend decodes documents without rejecting unknown fields and rewrites them from the struct. Trigger: roll back to the previous release on the jsonfile backend - every refunds array is read as nothing and erased by the first write that touches the order. What was given back disappears, the ceiling resets and the keys go with it, so a replayed request pays again.",
+    "file_path": "services/orders/internal/core/order.go",
+    "start_line": 17,
+    "end_line": 27,
+    "snippet": "type Order struct {\n\tID           string     `json:\"id\"`\n\tCustomerID   string     `json:\"customer_id\"`\n\tItems        []Item     `json:\"items\"`\n\tStatus       Status     `json:\"status\"`\n\tPlacedAt     time.Time  `json:\"placed_at\"`\n\tUpdatedAt    time.Time  `json:\"updated_at\"`\n\tCancelledAt  *time.Time `json:\"cancelled_at,omitempty\"`\n\tCancelReason string     `json:\"cancel_reason,omitempty\"`\n\tRefunds      []Refund   `json:\"refunds,omitempty\"`\n}",
+    "witness": "witnesses/x10_refunds_survive_an_older_build_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X12",
+    "kind": "bug",
+    "lens": "correctness",
+    "severity": "minor",
+    "title": "a request may name the same sku on two lines",
+    "description": "The validator checks each line for a sku and a positive quantity but no longer rejects the same sku twice, and no test covers it. Trigger: POST a refund whose lines list desk-lamp twice - the sku is priced once per line, so a single request refunds more units of it than the order holds and the return sends them all back to inventory.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 135,
+    "end_line": 154,
+    "snippet": "func (r RefundRequest) validate() error {\n\tswitch {\n\tcase r.OrderID == \"\":\n\t\treturn invalid(\"id\", \"order id is required\")\n\tcase r.Key == \"\":\n\t\treturn invalid(\"key\", \"an idempotency key is required\")\n\tcase len(r.Reason) > maxRefundReasonLen:\n\t\treturn invalid(\"reason\", \"must be at most \"+strconv.Itoa(maxRefundReasonLen)+\" characters\")\n\t}\n\n\tfor _, line := range r.Lines {\n\t\tswitch {\n\t\tcase line.SKU == \"\":\n\t\t\treturn invalid(\"lines\", \"every line needs a sku\")\n\t\tcase line.Quantity <= 0:\n\t\t\treturn invalid(\"lines\", \"quantity of \"+line.SKU+\" must be positive\")\n\t\t}\n\t}\n\treturn nil\n}",
+    "witness": "witnesses/x12_a_sku_on_two_lines_is_refused_test.go",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C2",
+    "kind": "bug",
+    "lens": "correctness",
+    "severity": "blocker",
+    "title": "a transition that overlaps a refund writes the refund away",
+    "description": "orderGate serialises refunds against refunds only. advance() and CancelOrder do an unguarded load-modify-write and both stores replace the record whole, so a ship, deliver or cancel that read the order before the refund committed writes back a copy with no refunds. Trigger: MarkShipped loads an order, a refund commits and pays out, MarkShipped writes - the refund record and its idempotency key are gone, the ledger says nothing was given back, and the client's retry under the same key pays a second time and sends a second return. The ship guard is defeated by the same window. The remedy is widening the existing per-order gate over every read-modify-write, NOT store versioning (trunk tried and reverted that, 626e4d2).",
+    "file_path": "services/orders/internal/core/service.go",
+    "start_line": 174,
+    "end_line": 191,
+    "snippet": "\tif err != nil {\n\t\treturn Order{}, xerrors.Wrapf(err, \"load order %s\", id)\n\t}\n\tif order.Status == to {\n\t\treturn order, nil\n\t}\n\tif !slices.Contains(from, order.Status) {\n\t\treturn Order{}, xerrors.Wrapf(refuse, \"order %s is %s\", order.ID, order.Status)\n\t}\n\t// Money that has gone back must not walk out of the warehouse after it. An\n\t// order worth nothing has nothing to give back, so the test is not about it.\n\tvalue := linesValue(order.Items)\n\tif to == StatusShipped && value > 0 && order.Refunded() >= value {\n\t\treturn Order{}, xerrors.Wrapf(refuse, \"order %s has been refunded in full\", order.ID)\n\t}\n\n\torder.Status = to\n\torder.UpdatedAt = s.now().UTC()",
+    "witness": "witnesses/c2_a_transition_does_not_erase_a_refund_test.go",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C5",
+    "kind": "bug",
+    "lens": "robustness",
+    "severity": "serious",
+    "title": "a refund book that cannot be read is read as an empty one",
+    "description": "os.ReadFile answers a failed open with no bytes and an error, and the length test runs first, so every failure returns (nil, nil) and the error branch below it can never run. Trigger: the sidecar loses its permissions or its disk answers EIO - the store opens as if no refund had ever been recorded, and the next write that has refunds to record rewrites the book from what is left. The file exists solely to survive a rollback, and this is the branch that disarms it silently.",
+    "file_path": "services/orders/internal/store/jsonfile.go",
+    "start_line": 152,
+    "end_line": 159,
+    "snippet": "func (f *JSONFile) readRefunds() (map[string][]core.Refund, error) {\n\traw, err := os.ReadFile(f.refundsPath())\n\tif errors.Is(err, os.ErrNotExist) || len(raw) == 0 {\n\t\treturn nil, nil\n\t}\n\tif err != nil {\n\t\treturn nil, xerrors.Wrapf(err, \"read %s\", f.refundsPath())\n\t}",
+    "witness": "witnesses/c5_an_unreadable_refund_book_is_not_an_empty_one_test.go",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C6",
+    "kind": "bug",
+    "lens": "integration",
+    "severity": "minor",
+    "title": "the refund book is written after the document it backs up",
+    "description": "write() renames the order document into place first and the book second, and the load-time merge takes the book only when the order carries no refunds at all. Trigger: the process dies between the two renames, then the release is rolled back - the document is rewritten without refunds by the older build and the book is one refund behind, so the newest refund is gone: its money leaves the ledger, the ceiling rises again and its key can be replayed. Shares its block with C7: this is durability, C7 is the failure that is reported to the caller.",
+    "file_path": "services/orders/internal/store/jsonfile.go",
+    "start_line": 168,
+    "end_line": 183,
+    "snippet": "func (f *JSONFile) write(orders map[string]core.Order) error {\n\tif err := writeDocument(f.path, document{Orders: orders}); err != nil {\n\t\treturn err\n\t}\n\n\trefunds := make(map[string][]core.Refund)\n\tfor id, order := range orders {\n\t\tif len(order.Refunds) > 0 {\n\t\t\trefunds[id] = order.Refunds\n\t\t}\n\t}\n\tif len(refunds) == 0 {\n\t\treturn nil\n\t}\n\treturn writeDocument(f.refundsPath(), refundBook{Refunds: refunds})\n}",
+    "witness": "witnesses/c6_a_crash_between_the_two_writes_keeps_every_refund_test.go",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C7",
+    "kind": "bug",
+    "lens": "integration",
+    "severity": "minor",
+    "title": "a store call fails after it has already committed",
+    "description": "The order document is durable before the refund book is attempted, so a failure writing the book comes back as a failed Create or Update for data that is already on disk. Trigger: the book cannot be written while the document could - PlaceOrder takes the error, releases the stock it reserved and answers the client with a failure, while the order sits in orders.json holding nothing. Same block as C6, different consequence.",
+    "file_path": "services/orders/internal/store/jsonfile.go",
+    "start_line": 168,
+    "end_line": 172,
+    "snippet": "func (f *JSONFile) write(orders map[string]core.Order) error {\n\tif err := writeDocument(f.path, document{Orders: orders}); err != nil {\n\t\treturn err\n\t}\n",
+    "witness": "witnesses/c7_a_failed_store_call_leaves_nothing_behind_test.go",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C10",
+    "kind": "bug",
+    "lens": "integration",
+    "severity": "minor",
+    "title": "the refund book is rebuilt only from the orders the document still names",
+    "description": "Every write regenerates the book from the map it was handed, so an order that is not in the document loses its refunds the next time anything is written. Trigger: an operator restores an older orders.json - the refunds of every order that predates the restore are dropped from the one file that was meant to outlive exactly that kind of rewrite. Reachable through operator action rather than the service's own calls.",
+    "file_path": "services/orders/internal/store/jsonfile.go",
+    "start_line": 173,
+    "end_line": 182,
+    "snippet": "\trefunds := make(map[string][]core.Refund)\n\tfor id, order := range orders {\n\t\tif len(order.Refunds) > 0 {\n\t\t\trefunds[id] = order.Refunds\n\t\t}\n\t}\n\tif len(refunds) == 0 {\n\t\treturn nil\n\t}\n\treturn writeDocument(f.refundsPath(), refundBook{Refunds: refunds})",
+    "witness": "witnesses/c10_the_refund_book_keeps_orders_the_document_forgot_test.go",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X3",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "the case named for the ceiling exercises the per-line guard",
+    "description": "The entry called 'refund more than the order was worth' asks for nine units of a line the seeded order holds one of, so it stops at the per-line check and asserts invalid_request. ErrRefundTooLarge and the 409 it maps to are asserted nowhere in the branch, which is why the ceiling can be changed in any direction without the suite noticing.",
+    "file_path": "services/orders/internal/api/api_test.go",
+    "start_line": 119,
+    "end_line": 126,
+    "snippet": "\t\t{\n\t\t\tname:       \"refund more than the order was worth\",\n\t\t\tmethod:     http.MethodPost,\n\t\t\tpath:       \"/orders/ord_delivered/refund\",\n\t\t\tbody:       `{\"key\":\"sup-3\",\"lines\":[{\"sku\":\"desk-lamp\",\"quantity\":9}]}`,\n\t\t\twantStatus: http.StatusBadRequest,\n\t\t\twantCode:   \"invalid_request\",\n\t\t},",
+    "witness": "witnesses/x3_ceiling_is_covered.sh",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X4",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "nothing pins the field names of a stored order document",
+    "description": "The file backend is only ever tested against documents this same build wrote, so the names in the document are free to drift and no test notices. Trigger: rename any json tag on core.Order or core.Item and the suite stays green while every document already on disk decodes with a zero in that field. A fixture document with the names spelled out would have caught the unit price rename in this branch.",
+    "file_path": "services/orders/internal/store/store_test.go",
+    "start_line": 169,
+    "end_line": 190,
+    "snippet": "func TestJSONFileSurvivesAReopen(t *testing.T) {\n\tpath := filepath.Join(t.TempDir(), \"orders.json\")\n\torders, err := store.NewJSONFile(path)\n\tif err != nil {\n\t\tt.Fatalf(\"NewJSONFile() error = %v\", err)\n\t}\n\tif err := orders.Create(context.Background(), orderFor(\"ord_1\", \"cust-17\", core.StatusPaid, placedAt)); err != nil {\n\t\tt.Fatalf(\"Create() error = %v\", err)\n\t}\n\n\treopened, err := store.NewJSONFile(path)\n\tif err != nil {\n\t\tt.Fatalf(\"second NewJSONFile() error = %v\", err)\n\t}\n\tstored, err := reopened.Get(context.Background(), \"ord_1\")\n\tif err != nil {\n\t\tt.Fatalf(\"Get() error = %v\", err)\n\t}\n\tif stored.Status != core.StatusPaid || stored.CustomerID != \"cust-17\" {\n\t\tt.Fatalf(\"reopened order = %+v, want the one that was written\", stored)\n\t}\n}",
+    "witness": "witnesses/x4_ondisk_names_are_covered.sh",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X5",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "the stock return client is only tested against what the test itself sent",
+    "description": "The tests for Restock start a server that accepts anything and assert the path and body the test supplied, so they pass for any implementation that reaches the endpoint. Nothing asserts that the call carries the request id or is bounded by the client it was given, which is what lets the return go out through http.DefaultClient unnoticed.",
+    "file_path": "services/orders/internal/inventory/client_test.go",
+    "start_line": 74,
+    "end_line": 105,
+    "snippet": "func TestRestockSendsTheReturnedLines(t *testing.T) {\n\tvar (\n\t\tgotPath string\n\t\tgotBody map[string]any\n\t)\n\tserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n\t\tgotPath = r.URL.Path\n\t\traw, _ := io.ReadAll(r.Body)\n\t\t_ = json.Unmarshal(raw, &gotBody)\n\t\tw.WriteHeader(http.StatusOK)\n\t}))\n\tdefer server.Close()\n\n\tret := core.StockReturn{\n\t\tOrderID: \"ord_1\",\n\t\tLines:   []core.Item{{SKU: \"desk-lamp\", Quantity: 1, UnitPrice: 4900}},\n\t}\n\tif err := newClient(t, server).Restock(context.Background(), ret); err != nil {\n\t\tt.Fatalf(\"Restock() error = %v\", err)\n\t}\n\n\tif gotPath != \"/stock/returns\" {\n\t\tt.Errorf(\"path = %q, want %q\", gotPath, \"/stock/returns\")\n\t}\n\tif gotBody[\"order_id\"] != \"ord_1\" {\n\t\tt.Errorf(\"order_id = %v, want ord_1\", gotBody[\"order_id\"])\n\t}\n\tlines, ok := gotBody[\"lines\"].([]any)\n\tif !ok || len(lines) != 1 {\n\t\tt.Fatalf(\"lines = %v, want one line\", gotBody[\"lines\"])\n\t}\n}",
+    "witness": "witnesses/x5_return_call_is_covered.sh",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X11",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "nothing pins the reason limit the change argued for",
+    "description": "The only reason case sends 501 characters and expects a refusal, which holds for a limit of 500 and equally for 240. The change writes down a deliberate deviation from the cancel flow's 240 and explains why finance needs the longer text; shorten the constant and the suite stays green.",
+    "file_path": "services/orders/internal/core/refund_test.go",
+    "start_line": 65,
+    "end_line": 69,
+    "snippet": "\t\t{\n\t\t\tname:    \"with a reason nobody will read\",\n\t\t\tstatus:  core.StatusPaid,\n\t\t\trequest: core.RefundRequest{OrderID: \"ord_1\", Key: \"sup-7\", Reason: strings.Repeat(\"x\", 501)},\n\t\t\twantErr: core.ErrInvalidRequest,",
+    "witness": "witnesses/x11_reason_limit_is_covered.sh",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X13",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "nothing reads an order back over http after a refund",
+    "description": "The refund tests assert the refund view and never fetch the order again, so the order view's total and refunded are asserted nowhere in the branch. Change what total means, or drop refunded from the payload, and the suite stays green. This is the gap that lets B4 through, the way X4 is the gap that lets B5 through. (refund-clean carries the assertion.)",
+    "file_path": "services/orders/internal/api/api_test.go",
+    "start_line": 213,
+    "end_line": 236,
+    "snippet": "func TestRefundAnswersWithTheRefund(t *testing.T) {\n\trouter, _ := newRouter(t)\n\n\tresponse := call(t, router, http.MethodPost, \"/orders/ord_delivered/refund\",\n\t\t`{\"key\":\"sup-1\",\"reason\":\"lamp arrived scratched\",\"lines\":[{\"sku\":\"desk-lamp\",\"quantity\":1}]}`)\n\tif response.Code != http.StatusOK {\n\t\tt.Fatalf(\"status = %d, want 200 (body %s)\", response.Code, response.Body)\n\t}\n\n\tvar view struct {\n\t\tID      string `json:\"id\"`\n\t\tOrderID string `json:\"order_id\"`\n\t\tReason  string `json:\"reason\"`\n\t}\n\tif err := json.Unmarshal(response.Body.Bytes(), &view); err != nil {\n\t\tt.Fatalf(\"decode body %q: %v\", response.Body, err)\n\t}\n\tif view.OrderID != \"ord_delivered\" || view.ID == \"\" {\n\t\tt.Errorf(\"refund = %+v, want it to name the order and itself\", view)\n\t}\n\tif view.Reason != \"lamp arrived scratched\" {\n\t\tt.Errorf(\"reason = %q, want the one that was sent\", view.Reason)\n\t}\n}",
+    "witness": "witnesses/x13_order_view_is_covered.sh",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "X14",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "nothing counts how often the return is sent",
+    "description": "The test for a failing return asserts only that the refund survives; it never reads what inventory was told, so the service may offer the return once or a hundred times with the suite green. Setting restockAttempts to 100 leaves make test passing. refund-clean pins it (TestRefundOrderSendsTheLinesBackOnce, want 1), which is why B7 is invisible there. Distinct from B7 under the hit rule: the loop is in refund.go, this is the missing assertion in the test.",
+    "file_path": "services/orders/internal/core/refund_test.go",
+    "start_line": 193,
+    "end_line": 215,
+    "snippet": "func TestRefundOrderKeepsTheRefundWhenTheReturnFails(t *testing.T) {\n\tlamp := core.Item{SKU: \"desk-lamp\", Quantity: 2, UnitPrice: 4900}\n\torders, stock := testsupport.NewStore(orderWith(core.StatusDelivered, lamp)), testsupport.NewInventory()\n\tstock.FailRestock(errors.New(\"inventory is down\"))\n\tservice := newService(t, orders, stock)\n\n\trequest := core.RefundRequest{\n\t\tOrderID: \"ord_1\",\n\t\tKey:     \"sup-1\",\n\t\tLines:   []core.Item{{SKU: \"desk-lamp\", Quantity: 1}},\n\t}\n\tif _, err := service.RefundOrder(context.Background(), request); err == nil {\n\t\tt.Fatal(\"RefundOrder() = nil, want the inventory error\")\n\t}\n\n\tstored, err := service.Get(context.Background(), \"ord_1\")\n\tif err != nil {\n\t\tt.Fatalf(\"Get() error = %v\", err)\n\t}\n\tif len(stored.Refunds) != 1 {\n\t\tt.Fatalf(\"stored %d refunds, want the refund to survive the failed return\", len(stored.Refunds))\n\t}\n}",
+    "witness": "witnesses/x14_return_count_is_covered.sh",
+    "arms": [
+      "refund-bugs"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "D1",
+    "kind": "decoy",
+    "lens": "robustness",
+    "severity": "minor",
+    "title": "addOnHand touches the level map without taking a lock",
+    "description": "The helper reads and writes m.levels with no locking of its own, which reads like a data race. Both callers, Restock and ReturnLines, hold m.mu for the whole call and the helper is unexported with no other reference in the package. Reporting it is a false positive.",
+    "file_path": "services/inventory/internal/store/memory.go",
+    "start_line": 159,
+    "end_line": 167,
+    "snippet": "func (m *Memory) addOnHand(sku string, quantity int) core.Level {\n\tlevel, ok := m.levels[sku]\n\tif !ok {\n\t\tlevel = core.Level{SKU: sku}\n\t}\n\tlevel.OnHand += quantity\n\tm.levels[sku] = level\n\treturn level\n}",
+    "witness": "",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "reject"
+  },
+  {
+    "id": "D2",
+    "kind": "decoy",
+    "lens": "correctness",
+    "severity": "minor",
+    "title": "refundAmount does not check that a returned quantity is positive",
+    "description": "The pricing loop trusts line.Quantity. RefundRequest.validate() rejects any line with a quantity of zero or less before the order is loaded, and refundAmount is unexported with RefundOrder as its only caller. Reporting a missing check here is a false positive.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 175,
+    "end_line": 195,
+    "snippet": "func refundAmount(order Order, lines []Item) (int64, error) {\n\tif len(lines) == 0 {\n\t\treturn linesValue(order.Items) - order.Refunded(), nil\n\t}\n\n\tunits, returned := 0, 0\n\tfor _, item := range order.Items {\n\t\tunits += item.Quantity\n\t}\n\tfor _, line := range lines {\n\t\titem, ok := itemOf(order, line.SKU)\n\t\tif !ok {\n\t\t\treturn 0, invalid(\"lines\", \"sku \"+line.SKU+\" is not on order \"+order.ID)\n\t\t}\n\t\tif line.Quantity > item.Quantity {\n\t\t\treturn 0, invalid(\"lines\", \"order \"+order.ID+\" holds fewer \"+line.SKU+\" than that\")\n\t\t}\n\t\treturned += line.Quantity\n\t}\n\treturn linesValue(order.Items) * int64(returned) / int64(units), nil\n}",
+    "witness": "",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "reject"
+  },
+  {
+    "id": "D3",
+    "kind": "decoy",
+    "lens": "robustness",
+    "severity": "minor",
+    "title": "matching refund lines against order items is a nested scan",
+    "description": "Each refund line walks the order's items, so the match is quadratic. An order carries at most 50 items and a refund at most as many lines, both in memory, inside a call that already does a store read and an HTTP round trip. Reporting it is a false positive.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 197,
+    "end_line": 204,
+    "snippet": "func itemOf(order Order, sku string) (Item, bool) {\n\tfor _, item := range order.Items {\n\t\tif item.SKU == sku {\n\t\t\treturn item, true\n\t\t}\n\t}\n\treturn Item{}, false\n}",
+    "witness": "",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "reject"
+  },
+  {
+    "id": "D4",
+    "kind": "decoy",
+    "lens": "correctness",
+    "severity": "minor",
+    "title": "the refund reason allows 500 characters where cancel allows 240",
+    "description": "The limit deviates from the cancel flow on purpose: support pastes the part of the ticket that explains the refund and finance reads it during reconciliation. The decision is written down in the change proposal. Reporting the divergence as an inconsistency is a false positive; that the boundary is untested is X11 and a different finding.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 13,
+    "end_line": 15,
+    "snippet": "// Support quotes the ticket it is working from, which does not fit in the\n// length the cancel flow allows for a reason.\nconst maxRefundReasonLen = 500",
+    "witness": "",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "reject"
+  },
+  {
+    "id": "D5",
+    "kind": "decoy",
+    "lens": "correctness",
+    "severity": "minor",
+    "title": "refundByKey scans the refunds backwards",
+    "description": "The lookup walks the recorded refunds from the newest, which looks like it would matter if a key appeared twice. The only place that appends a refund returns the existing one whenever this same lookup finds the key, so direction is not observable. Reporting it is a false positive.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 165,
+    "end_line": 172,
+    "snippet": "func refundByKey(order Order, key string) (Refund, bool) {\n\tfor i := len(order.Refunds) - 1; i >= 0; i-- {\n\t\tif order.Refunds[i].Key == key {\n\t\t\treturn order.Refunds[i], true\n\t\t}\n\t}\n\treturn Refund{}, false\n}",
+    "witness": "",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "reject"
+  },
+  {
+    "id": "D6",
+    "kind": "decoy",
+    "lens": "correctness",
+    "severity": "minor",
+    "title": "an idempotency key is matched without the request that carried it",
+    "description": "refundByKey matches the key alone, so a second request that reuses a key with different lines is answered with the first refund and its reason. The delta requires exactly this: a key the order has already seen answers with the refund that key issued. Asking for a fingerprint of the body and a conflict on mismatch is a design change, not a defect. Reporting it is a false positive. Shares its location with D5, which is about the direction of the scan.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 165,
+    "end_line": 172,
+    "snippet": "func refundByKey(order Order, key string) (Refund, bool) {\n\tfor i := len(order.Refunds) - 1; i >= 0; i-- {\n\t\tif order.Refunds[i].Key == key {\n\t\t\treturn order.Refunds[i], true\n\t\t}\n\t}\n\treturn Refund{}, false\n}",
+    "witness": "",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "reject"
+  },
+  {
+    "id": "D7",
+    "kind": "decoy",
+    "lens": "integration",
+    "severity": "minor",
+    "title": "a stored refund line carries a unit price of zero",
+    "description": "The handler builds refund lines from sku and quantity, so the price on a refund line is always zero, in the document and in the response. Nothing reads it: an amount is priced from the order's own items, and the return sends skus and quantities. Reporting it as data loss, or as fallout from the field rename, is a false positive.",
+    "file_path": "services/orders/internal/api/orders.go",
+    "start_line": 153,
+    "end_line": 156,
+    "snippet": "\tlines := make([]core.Item, 0, len(payload.Lines))\n\tfor _, line := range payload.Lines {\n\t\tlines = append(lines, core.Item{SKU: line.SKU, Quantity: line.Quantity})\n\t}",
+    "witness": "",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "reject"
+  },
+  {
+    "id": "D8",
+    "kind": "decoy",
+    "lens": "integration",
+    "severity": "minor",
+    "title": "a refund does not give the order's hold back",
+    "description": "A refund never releases the order's reservation - the cancel path owns the hold, the release primitive is all-or-nothing by order id, and the standing hold is what accounts for goods that have not shipped. Reporting the absence of a Release in the refund path as a defect is a false positive; the shelving rule (only shipped/delivered lines are restocked) is the intended stock side of a refund. Shares its location with B7 and X6, which are about the call that is made.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 115,
+    "end_line": 133,
+    "snippet": "// returnStock sends the refunded lines back, giving inventory a couple more\n// goes when it is having a bad minute.\nfunc (s *Service) returnStock(ctx context.Context, order Order, refund Refund) error {\n\t// A refund that names no lines is money only: nothing came back to shelve.\n\tif len(refund.Lines) == 0 {\n\t\treturn nil\n\t}\n\n\tret := StockReturn{OrderID: order.ID, Lines: refund.Lines}\n\n\tvar err error\n\tfor attempt := 0; attempt < restockAttempts; attempt++ {\n\t\terr = s.inventory.Restock(ctx, ret)\n\t\tif err == nil {\n\t\t\treturn nil\n\t\t}\n\t}\n\treturn xerrors.Wrapf(err, \"return the lines of refund %s\", refund.ID)\n}",
+    "witness": "",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "reject"
+  },
+  {
+    "id": "C11",
+    "kind": "bug",
+    "lens": "integration",
+    "severity": "serious",
+    "title": "a refund that is recorded is answered as a failure",
+    "description": "RefundOrder hands back the refund it wrote alongside the error from the return, and the handler throws that refund away and calls fail(). Trigger: refund a delivered order while inventory is refusing - the refund is on the order, the money has gone back, and the caller is told 500 internal, or 400 invalid_request when inventory answered 400. The spec's no-resend clause says the return is not retried and it is not; what is wrong is the answer, not the missing retry. A support tool that mints a fresh key per attempt pays the same lines twice, and any client that reads a 5xx as 'nothing happened' is wrong about money. A repeat under the same key answers 200 with the first refund, so only the first answer lies.",
+    "file_path": "services/orders/internal/api/orders.go",
+    "start_line": 160,
+    "end_line": 165,
+    "snippet": "\trefund, err := h.orders.RefundOrder(r.Context(), request)\n\tif err != nil {\n\t\th.fail(w, r, err)\n\t\treturn\n\t}\n\thttputil.WriteJSON(w, http.StatusOK, refundViewOf(orderID, refund))",
+    "witness": "witnesses/c11_a_committed_refund_is_not_a_failure_test.go",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C12",
+    "kind": "bug",
+    "lens": "correctness",
+    "severity": "serious",
+    "title": "a partly refunded order ships every unit it ever held",
+    "description": "The ship transition refuses an order only once its refunds cover the whole order value, and a refund reduces neither Items nor the reservation. Trigger: refund one of two lamps on a paid order and let the warehouse mark it shipped - both lamps leave and the customer has been paid back for one of them. There is no path that shelves the refunded unit either: returnStock sends nothing for an order that has not shipped. On refund-bugs the transition carries no refund clause at all, so the same sequence goes through there too; the fully-refunded half of that is X8. The netting in refundAmount is not part of this claim - a later refund of the second lamp is priced and allowed, because the order did hold two.",
+    "file_path": "services/orders/internal/core/service.go",
+    "start_line": 183,
+    "end_line": 188,
+    "snippet": "\t// Money that has gone back must not walk out of the warehouse after it. An\n\t// order worth nothing has nothing to give back, so the test is not about it.\n\tvalue := linesValue(order.Items)\n\tif to == StatusShipped && value > 0 && order.Refunded() >= value {\n\t\treturn Order{}, xerrors.Wrapf(refuse, \"order %s has been refunded in full\", order.ID)\n\t}",
+    "witness": "witnesses/c12_refunded_units_do_not_leave_the_warehouse_test.go",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C13",
+    "kind": "bug",
+    "lens": "robustness",
+    "severity": "serious",
+    "title": "the refund gate is held across the call to inventory",
+    "description": "enter() is taken before the order is loaded and released by defer, so one of the 64 stripes stays locked through store.Update and through returnStock's HTTP call; enter() takes a plain mutex and cannot see the caller's context. Trigger: inventory accepts connections and stops answering - refunds queue 64 wide behind calls that run to the client timeout, waiters whose clients have already hung up cannot be shed and each then makes its own doomed call, and an order that shares a stripe with the stalled one waits for a warehouse it has nothing to do with. The gate's own comment names what it is for: the key, the ceiling and the write. The network call is not in that list.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 64,
+    "end_line": 67,
+    "snippet": "\t// One refund of an order at a time: the key, the ceiling and the write have\n\t// to be decided on the same version of it.\n\tleave := s.refunds.enter(req.OrderID)\n\tdefer leave()",
+    "witness": "witnesses/c13_the_refund_gate_lets_a_lost_caller_go_test.go",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C14",
+    "kind": "bug",
+    "lens": "robustness",
+    "severity": "minor",
+    "title": "the gate picks a lock by a signed conversion of a 32 bit digest",
+    "description": "int(digest.Sum32()) converts a uint32 to int. Where int is 32 bits wide - a 386 or arm build - every digest with the high bit set turns negative, Go's remainder keeps the sign, and the index leaves the array. Trigger: on such a build, any order id whose FNV-32a digest has the high bit set, which is about half of them; the first refund of one panics the request. Nothing in the module pins the word size. The remainder belongs in unsigned arithmetic.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 41,
+    "end_line": 49,
+    "snippet": "// enter blocks until the order is free and answers with its release.\nfunc (g *orderGate) enter(orderID string) func() {\n\tdigest := fnv.New32a()\n\t_, _ = digest.Write([]byte(orderID))\n\n\tlock := &g.locks[int(digest.Sum32())%len(g.locks)]\n\tlock.Lock()\n\treturn lock.Unlock\n}",
+    "witness": "witnesses/c14_the_gate_picks_a_lock_that_exists.sh",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C15",
+    "kind": "bug",
+    "lens": "security",
+    "severity": "minor",
+    "title": "the refund answer echoes the path segment as the order id",
+    "description": "The handler passes the raw path value to the core, which trims it before booking, and puts that same raw string into the answer. Trigger: POST /orders/ord_1%20/refund - the refund is recorded against ord_1 and the answer reports an order_id with a trailing space, an id that matches no order and that a client keying on it cannot use. The refund id in the same body names the real order, so one answer contradicts itself.",
+    "file_path": "services/orders/internal/api/orders.go",
+    "start_line": 158,
+    "end_line": 165,
+    "snippet": "\torderID := r.PathValue(\"id\")\n\trequest := core.RefundRequest{OrderID: orderID, Key: payload.Key, Reason: payload.Reason, Lines: lines}\n\trefund, err := h.orders.RefundOrder(r.Context(), request)\n\tif err != nil {\n\t\th.fail(w, r, err)\n\t\treturn\n\t}\n\thttputil.WriteJSON(w, http.StatusOK, refundViewOf(orderID, refund))",
+    "witness": "witnesses/c15_the_answer_names_the_order_it_refunded_test.go",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C16",
+    "kind": "bug",
+    "lens": "integration",
+    "severity": "minor",
+    "title": "the refund book is never truncated",
+    "description": "write() skips the book entirely when no order in the document has refunds, so taking the last refund away leaves the old book on disk and the next read puts it back. Trigger: a stale writer overwrites an order without the refund that committed while it was in flight (C2). If that order was the only one with refunds the book survives and the refund reappears; if any unrelated order has refunds the book is rewritten without it and the refund is gone for good. Whether money that was given back survives a lost update depends on data that has nothing to do with it.",
+    "file_path": "services/orders/internal/store/jsonfile.go",
+    "start_line": 179,
+    "end_line": 181,
+    "snippet": "\tif len(refunds) == 0 {\n\t\treturn nil\n\t}",
+    "witness": "witnesses/c16_a_removed_refund_stays_removed_test.go",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C17",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "nothing pins what a return line carries",
+    "description": "The only test of the return the orders service sends asserts the path, the order id and the number of lines, never a line's sku or quantity, and nothing drives the real client against the real inventory router. Dropping quantity from the payload keeps every package in the repository green while inventory refuses every return it is sent. Distinct from X5, which is about the call rather than its body: the client it goes through and the request id it carries.",
+    "file_path": "services/orders/internal/inventory/client_test.go",
+    "start_line": 76,
+    "end_line": 107,
+    "snippet": "func TestRestockSendsTheReturnedLines(t *testing.T) {\n\tvar (\n\t\tgotPath string\n\t\tgotBody map[string]any\n\t)\n\tserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n\t\tgotPath = r.URL.Path\n\t\traw, _ := io.ReadAll(r.Body)\n\t\t_ = json.Unmarshal(raw, &gotBody)\n\t\tw.WriteHeader(http.StatusOK)\n\t}))\n\tdefer server.Close()\n\n\tret := core.StockReturn{\n\t\tOrderID: \"ord_1\",\n\t\tLines:   []core.Item{{SKU: \"desk-lamp\", Quantity: 1, UnitPrice: 4900}},\n\t}\n\tif err := newClient(t, server).Restock(context.Background(), ret); err != nil {\n\t\tt.Fatalf(\"Restock() error = %v\", err)\n\t}\n\n\tif gotPath != \"/stock/returns\" {\n\t\tt.Errorf(\"path = %q, want %q\", gotPath, \"/stock/returns\")\n\t}\n\tif gotBody[\"order_id\"] != \"ord_1\" {\n\t\tt.Errorf(\"order_id = %v, want ord_1\", gotBody[\"order_id\"])\n\t}\n\tlines, ok := gotBody[\"lines\"].([]any)\n\tif !ok || len(lines) != 1 {\n\t\tt.Fatalf(\"lines = %v, want one line\", gotBody[\"lines\"])\n\t}\n}",
+    "witness": "witnesses/c17_return_line_contents_are_covered.sh",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C18",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "a refused return is only checked against reservations",
+    "description": "TestReturnRejects asserts the error and then calls assertUntouched, which reads only level.Reserved - a number a return never moves, because a return raises OnHand. An implementation that books the lines onto the shelf and refuses the request afterwards keeps all three cases green, so the shelf is unguarded in the one test written to guard it.",
+    "file_path": "services/inventory/internal/core/service_test.go",
+    "start_line": 234,
+    "end_line": 258,
+    "snippet": "func TestReturnRejects(t *testing.T) {\n\ttests := []struct {\n\t\tname    string\n\t\trequest core.ReturnRequest\n\t}{\n\t\t{name: \"no order id\", request: core.ReturnRequest{Lines: []core.Line{{SKU: \"desk-lamp\", Quantity: 1}}}},\n\t\t{name: \"no lines\", request: core.ReturnRequest{OrderID: \"ord_1\"}},\n\t\t{\n\t\t\tname:    \"a line of nothing\",\n\t\t\trequest: core.ReturnRequest{OrderID: \"ord_1\", Lines: []core.Line{{SKU: \"desk-lamp\"}}},\n\t\t},\n\t}\n\n\tfor _, tt := range tests {\n\t\tt.Run(tt.name, func(t *testing.T) {\n\t\t\tstock := newService(t)\n\n\t\t\t_, err := stock.Return(context.Background(), tt.request)\n\t\t\tif !errors.Is(err, core.ErrInvalidRequest) {\n\t\t\t\tt.Fatalf(\"Return() error = %v, want %v\", err, core.ErrInvalidRequest)\n\t\t\t}\n\t\t\tassertUntouched(t, stock)\n\t\t})\n\t}\n}",
+    "witness": "witnesses/c18_a_refused_return_is_covered.sh",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C19",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "no test puts two refunds on one order",
+    "description": "Every test that refunds an order twice expects the second call to be refused or to answer with the first refund, so no order ever holds two. Replacing the append with an assignment that keeps only the newest refund leaves the whole repository green: accumulation, the id counter that reads len(order.Refunds), and the ceiling measured across refunds are all unpinned.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 103,
+    "end_line": 104,
+    "snippet": "\torder.Refunds = append(order.Refunds, refund)\n\torder.UpdatedAt = issuedAt",
+    "witness": "witnesses/c19_a_second_refund_is_covered.sh",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C20",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "the failed write of a refund is never driven",
+    "description": "testsupport.Store.FailUpdate exists and no refund test uses it, so the branch that turns a failed store write into a failed refund is never taken. Swallowing that error keeps every package green, and nothing pins the ordering the flow is built on: the money is written down before the stock moves. The cancel flow has that test - TestCancelOrderKeepsStockWhenTheStoreFails - and the refund flow did not get it.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 105,
+    "end_line": 107,
+    "snippet": "\tif err := s.store.Update(ctx, order); err != nil {\n\t\treturn Refund{}, xerrors.Wrapf(err, \"record refund %s\", refund.ID)\n\t}",
+    "witness": "witnesses/c20_a_failed_refund_write_is_covered.sh",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C21",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "the stock outcome of a refund that names no lines is unpinned",
+    "description": "Two tests drive a refund that names no lines and neither reads what inventory was told, so the rule the proposal argues for - money only, nothing comes back to shelve - is asserted nowhere. Deleting the early return sends a return for the commonest refund shape and the suite stays green.",
+    "file_path": "services/orders/internal/core/refund.go",
+    "start_line": 123,
+    "end_line": 126,
+    "snippet": "\t// A refund that names no lines is money only: nothing came back to shelve.\n\tif len(refund.Lines) == 0 {\n\t\treturn nil\n\t}",
+    "witness": "witnesses/c21_the_money_only_return_is_covered.sh",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C22",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "the serialisation test pins the scheduler, not the gate",
+    "description": "TestRefundOrderIsSerialisedPerOrder starts sixteen callers under one key and reads the order back. A lost update collapses concurrent appends to one refund, so both assertions on the stored order hold whether the gate is there or not, and only the count of returns can fail - which needs an interleaving the test does nothing to force. With the gate removed the test passes two runs in three on a loaded machine and every run on a single processor.",
+    "file_path": "services/orders/internal/core/refund_test.go",
+    "start_line": 386,
+    "end_line": 427,
+    "snippet": "func TestRefundOrderIsSerialisedPerOrder(t *testing.T) {\n\tconst callers = 16\n\n\tlamp := core.Item{SKU: \"desk-lamp\", Quantity: 2, UnitPrice: 4900}\n\torders, stock := testsupport.NewStore(orderWith(core.StatusDelivered, lamp)), testsupport.NewInventory()\n\tservice := newService(t, orders, stock)\n\n\trequest := core.RefundRequest{\n\t\tOrderID: \"ord_1\",\n\t\tKey:     \"sup-1\",\n\t\tLines:   []core.Item{{SKU: \"desk-lamp\", Quantity: 1}},\n\t}\n\n\tvar start, done sync.WaitGroup\n\tstart.Add(1)\n\tfor range callers {\n\t\tdone.Add(1)\n\t\tgo func() {\n\t\t\tdefer done.Done()\n\t\t\tstart.Wait()\n\t\t\tif _, err := service.RefundOrder(context.Background(), request); err != nil {\n\t\t\t\tt.Errorf(\"RefundOrder() error = %v\", err)\n\t\t\t}\n\t\t}()\n\t}\n\tstart.Done()\n\tdone.Wait()\n\n\tstored, err := service.Get(context.Background(), \"ord_1\")\n\tif err != nil {\n\t\tt.Fatalf(\"Get() error = %v\", err)\n\t}\n\tif len(stored.Refunds) != 1 {\n\t\tt.Errorf(\"the order holds %d refunds for one key, want 1\", len(stored.Refunds))\n\t}\n\tif stored.Refunded() != 4900 {\n\t\tt.Errorf(\"refunded %d for one key, want 4900\", stored.Refunded())\n\t}\n\tif returns := stock.Returns(); len(returns) != 1 {\n\t\tt.Errorf(\"inventory saw %d returns for one refund, want 1\", len(returns))\n\t}\n}",
+    "witness": "witnesses/c22_the_refund_gate_is_covered.sh",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C23",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "only the refusing side of the ship guard is tested",
+    "description": "TestRefundedOrderDoesNotShip covers the branch that stops a fully refunded order, and nothing covers the conditions that let one through. No test builds an order worth nothing, so the clause that keeps such an order shippable is never reached and dropping it keeps the suite green. That a partly refunded order ships at all is C12 and a defect rather than a gap.",
+    "file_path": "services/orders/internal/core/refund_test.go",
+    "start_line": 461,
+    "end_line": 484,
+    "snippet": "func TestRefundedOrderDoesNotShip(t *testing.T) {\n\tlamp := core.Item{SKU: \"desk-lamp\", Quantity: 2, UnitPrice: 4900}\n\torders := testsupport.NewStore(orderWith(core.StatusPaid, lamp))\n\tservice := newService(t, orders, testsupport.NewInventory())\n\n\tif _, err := service.RefundOrder(context.Background(), core.RefundRequest{\n\t\tOrderID: \"ord_1\", Key: \"sup-1\",\n\t}); err != nil {\n\t\tt.Fatalf(\"RefundOrder() error = %v\", err)\n\t}\n\n\t_, err := service.MarkShipped(context.Background(), \"ord_1\")\n\tif !errors.Is(err, core.ErrNotShippable) {\n\t\tt.Fatalf(\"MarkShipped() error = %v, want %v\", err, core.ErrNotShippable)\n\t}\n\n\tstored, err := service.Get(context.Background(), \"ord_1\")\n\tif err != nil {\n\t\tt.Fatalf(\"Get() error = %v\", err)\n\t}\n\tif stored.Status != core.StatusPaid {\n\t\tt.Fatalf(\"status = %s, want the order to stay where it was\", stored.Status)\n\t}\n}",
+    "witness": "witnesses/c23_the_ship_guard_is_covered.sh",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C24",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "the refund book is tested for one refund written once",
+    "description": "The book's test writes a single refund through Create and reads it back after the document has been stripped. Nothing writes two, and nothing goes through Update, which is the only path a refund takes in production. Truncating the book to the first refund of each order is green in both store modes: the mechanism's presence is tested and its completeness is not.",
+    "file_path": "services/orders/internal/store/store_test.go",
+    "start_line": 237,
+    "end_line": 269,
+    "snippet": "func TestRefundsSurviveABuildThatDoesNotKnowThem(t *testing.T) {\n\tpath := filepath.Join(t.TempDir(), \"orders.json\")\n\torders, err := store.NewJSONFile(path)\n\tif err != nil {\n\t\tt.Fatalf(\"NewJSONFile() error = %v\", err)\n\t}\n\n\torder := orderFor(\"ord_1\", \"cust-17\", core.StatusDelivered, placedAt)\n\torder.Refunds = []core.Refund{{\n\t\tID:       \"ord_1-r1\",\n\t\tKey:      \"sup-1\",\n\t\tAmount:   4900,\n\t\tLines:    []core.Item{{SKU: \"desk-lamp\", Quantity: 1}},\n\t\tIssuedAt: placedAt,\n\t}}\n\tif err := orders.Create(context.Background(), order); err != nil {\n\t\tt.Fatalf(\"Create() error = %v\", err)\n\t}\n\n\tdropRefunds(t, path)\n\n\treopened, err := store.NewJSONFile(path)\n\tif err != nil {\n\t\tt.Fatalf(\"second NewJSONFile() error = %v\", err)\n\t}\n\tstored, err := reopened.Get(context.Background(), \"ord_1\")\n\tif err != nil {\n\t\tt.Fatalf(\"Get() error = %v\", err)\n\t}\n\tif len(stored.Refunds) != 1 || stored.Refunded() != 4900 {\n\t\tt.Fatalf(\"refunds = %+v, want the 4900 that was given back\", stored.Refunds)\n\t}\n}",
+    "witness": "witnesses/c24_the_refund_book_is_covered.sh",
+    "arms": [
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "C25",
+    "kind": "bug",
+    "lens": "tests",
+    "severity": "minor",
+    "title": "the remainder after a partial refund is asserted nowhere",
+    "description": "'An empty list refunds everything that is left' is exercised only on an order that has been refunded nothing or refunded in full, so the subtraction is pinned at its two ends and nowhere between them. An implementation that gives nothing back once anything has been refunded keeps the suite green, and the scenario the spec delta names - what is left after a line has already come back - is unprotected.",
+    "file_path": "services/orders/internal/core/refund_test.go",
+    "start_line": 247,
+    "end_line": 272,
+    "snippet": "func TestRefundOrderRefusesARefundOfNothing(t *testing.T) {\n\tlamp := core.Item{SKU: \"desk-lamp\", Quantity: 1, UnitPrice: 4900}\n\torders := testsupport.NewStore(orderWith(core.StatusPaid, lamp))\n\tservice := newService(t, orders, testsupport.NewInventory())\n\n\tif _, err := service.RefundOrder(context.Background(), core.RefundRequest{\n\t\tOrderID: \"ord_1\", Key: \"sup-1\",\n\t}); err != nil {\n\t\tt.Fatalf(\"first RefundOrder() error = %v\", err)\n\t}\n\n\t_, err := service.RefundOrder(context.Background(), core.RefundRequest{\n\t\tOrderID: \"ord_1\", Key: \"sup-2\", Reason: strings.Repeat(\"x\", 500),\n\t})\n\tif !errors.Is(err, core.ErrInvalidRequest) {\n\t\tt.Fatalf(\"RefundOrder() error = %v, want %v\", err, core.ErrInvalidRequest)\n\t}\n\n\tstored, err := service.Get(context.Background(), \"ord_1\")\n\tif err != nil {\n\t\tt.Fatalf(\"Get() error = %v\", err)\n\t}\n\tif len(stored.Refunds) != 1 {\n\t\tt.Fatalf(\"the order holds %d refunds, want the one that moved money\", len(stored.Refunds))\n\t}\n}",
+    "witness": "witnesses/c25_the_remainder_is_covered.sh",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "fix"
+  },
+  {
+    "id": "D9",
+    "kind": "decoy",
+    "lens": "security",
+    "severity": "minor",
+    "title": "a refund records no actor",
+    "description": "A Refund keeps the caller's key, the reason and the amount and nothing about who asked for it, and the endpoint takes no identity either. The service authenticates nothing anywhere: no handler in either service reads a caller, no stored type holds one, and the change's spec delta asks for a key, a reason and lines. Reporting the missing actor, or the missing authentication on a money-out endpoint, as a defect of this change is a false positive - it is a service-wide decision and a separate piece of work, which is why the correct resolve verdict is accept rather than reject.",
+    "file_path": "services/orders/internal/core/order.go",
+    "start_line": 29,
+    "end_line": 37,
+    "snippet": "// Refund is money given back for part or all of an order.\ntype Refund struct {\n\tID       string    `json:\"id\"`\n\tKey      string    `json:\"key\"`\n\tAmount   int64     `json:\"amount\"`\n\tReason   string    `json:\"reason,omitempty\"`\n\tLines    []Item    `json:\"lines\"`\n\tIssuedAt time.Time `json:\"issued_at\"`\n}",
+    "witness": "",
+    "arms": [
+      "refund-bugs",
+      "refund-clean"
+    ],
+    "resolve_expectation": "accept"
+  }
+]

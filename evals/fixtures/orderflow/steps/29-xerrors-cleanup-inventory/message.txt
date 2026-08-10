@@ -1,0 +1,5 @@
+inventory: wrap the stock service errors with xerrors
+
+legacy_cache.go keeps its fmt.Errorf. It predates the rule, nothing new
+calls it, and rewriting its errors means re-reading the snapshot logic for
+no gain.

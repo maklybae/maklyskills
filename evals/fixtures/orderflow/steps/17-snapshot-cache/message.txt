@@ -1,0 +1,4 @@
+inventory: cache the warehouse export between reads
+
+The export is rewritten a few times a day and every store in the process
+reads the same file. Keep the decoded copy until the file changes.

@@ -1,0 +1,4 @@
+docs: write down the rules a change is reviewed against
+
+Two rules, both of them things we have argued about in review more than
+once: wrap errors with pkg/xerrors, and keep the store out of the handlers.

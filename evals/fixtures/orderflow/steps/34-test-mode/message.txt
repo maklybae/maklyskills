@@ -1,0 +1,5 @@
+orders: pick the store backend in tests through the environment
+
+The suite ran against the memory store whatever the change touched, which
+is not much of a test for the file backend. ORDERFLOW_TEST_MODE names the
+backend and TestMain refuses to guess one.

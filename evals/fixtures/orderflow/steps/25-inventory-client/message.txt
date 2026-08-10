@@ -1,0 +1,1 @@
+orders: talk to the inventory service over http

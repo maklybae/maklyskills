@@ -1,0 +1,1 @@
+inventory: cover reservations and the store with tests

@@ -1,0 +1,1 @@
+orders: cover the memory store with tests

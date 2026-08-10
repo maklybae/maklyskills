@@ -1,0 +1,3 @@
+docs: archive the cancel order change
+
+Both deltas fold into openspec/specs and the change moves under archive/.

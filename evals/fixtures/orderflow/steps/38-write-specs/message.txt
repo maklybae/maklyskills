@@ -1,0 +1,4 @@
+docs: write down what the orders service promises
+
+Two capabilities, order-lifecycle and stock-reservations, written from what
+the code already does. Anything we change from here gets a proposal first.
