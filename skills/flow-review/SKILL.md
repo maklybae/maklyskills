@@ -1,10 +1,9 @@
 ---
 name: flow-review
 description: >-
-  Review a change through several independent lenses at once — correctness,
-  integration and blast radius, production robustness, tests, security — by
-  dispatching one read-only subagent per lens so their contexts never mix, then
-  deduplicating, ranking and recording verified findings in the task ledger. Use
+  Run an independent multi-lens review of a change — correctness, integration
+  and blast radius, production robustness, tests, security — and record
+  verified, ranked findings in the task ledger. Use
   this skill when the user says "проревьюй", "посмотри что не так", "ищи баги",
   "review this", "check my changes before the PR", when an implementation has
   been tested and cleaned and is about to be committed or sent for review, or
