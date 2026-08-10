@@ -105,3 +105,13 @@ changing it after implementation costs the implementation.
 Present it compactly — the stage titles and what each produces — and offer the
 detail rather than dumping it. If the user says to go ahead without reading, go
 ahead; it is their call and their time.
+
+**When the plan has real forks, the gate becomes an interview.** One obvious
+approach and no risky stage — present compactly, one exchange, as above. Real
+trade-offs — walk them with the user one at a time, in dependency order, each
+with your recommended answer and its reason: several questions at once are
+bewildering, and a question without a recommendation outsources the thinking.
+Two rules keep it honest. A fact is never a question — if the repository, the
+history or the docs can answer it, exploration left a gap, so go look. And only
+decisions that change the work earn a question. Unattended runs cannot
+interview; the ledger's ASSUMED protocol owns that case.

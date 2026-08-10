@@ -88,8 +88,9 @@ the ledger:
   services rely on.
 - **Approaches** — two or three viable ones with their real trade-off. Do not
   pick; `flow-plan` picks, and it will pick better with options on the table.
-- **Open questions** — only those whose answer changes the work. Everything else
-  you decide yourself.
+- **Open questions** — only those whose answer changes the work, each phrased as
+  the decision it is, with your recommended answer: the plan gate walks them
+  with the user one at a time. Everything else you decide yourself.
 
 ## Not in this stage
 
