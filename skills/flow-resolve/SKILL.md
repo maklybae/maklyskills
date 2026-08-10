@@ -1,10 +1,9 @@
 ---
 name: flow-resolve
 description: >-
-  Work through review findings one by one, giving each an explicit verdict — fix
-  it, consciously accept it with a stated reason, or reject it as factually
-  wrong with the code that disproves it — then apply the fixes, verify, record
-  the verdicts in the ledger, and decide whether another review round is needed.
+  Give every review finding an explicit verdict, apply and verify the fixes,
+  and drive the review loop to convergence, recording the outcome in the task
+  ledger.
   Use this skill when the user says "исправь замечания", "разбери находки",
   "fix the review comments", "что делаем с этим ревью", when flow-review has
   just produced findings, or when review feedback has arrived from a human
