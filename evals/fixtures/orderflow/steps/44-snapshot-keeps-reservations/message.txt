@@ -1,0 +1,4 @@
+inventory: keep reservations when a fresh export lands
+
+Loading the morning export dropped the reserved counters, so every open
+order looked like free stock until it shipped.

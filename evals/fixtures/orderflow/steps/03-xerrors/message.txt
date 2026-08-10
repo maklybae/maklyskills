@@ -1,0 +1,4 @@
+pkg: add xerrors so failures carry context
+
+Every wrap keeps errors.Is working and says what the code was doing,
+which is the part a bare error value never tells us.

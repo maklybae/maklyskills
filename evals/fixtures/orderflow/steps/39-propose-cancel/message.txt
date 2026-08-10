@@ -1,0 +1,3 @@
+docs: propose the cancel order change
+
+Proposal, tasks and the two spec deltas it adds. Nothing implemented yet.

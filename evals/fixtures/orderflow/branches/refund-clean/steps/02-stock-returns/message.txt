@@ -1,0 +1,5 @@
+inventory: take returned lines back onto the shelf
+
+POST /stock/returns raises the counters for a set of lines in one go. A
+return is counted rather than keyed: inventory cannot tell a resend from a
+second parcel, so whoever sends one has to send it once.

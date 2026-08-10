@@ -1,0 +1,5 @@
+orders: generate the status names from the lifecycle constants
+
+The names lived in a map next to the constants and drifted twice. statusgen
+reads the const block and writes the tables; AGENTS.md gains the rule that
+goes with generated code.

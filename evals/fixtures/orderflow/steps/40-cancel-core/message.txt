@@ -1,0 +1,6 @@
+orders: cancel an order in the service
+
+Pending and paid orders can be cancelled, anything that left the warehouse
+cannot. A second cancel finds the order cancelled and changes nothing, so
+support can retry a request that timed out. `cancelled` joins the lifecycle
+constants, so the generated table moves with it.

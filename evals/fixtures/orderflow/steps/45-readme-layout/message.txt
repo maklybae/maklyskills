@@ -1,0 +1,1 @@
+docs: describe the layout and the make targets

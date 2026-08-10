@@ -1,0 +1,4 @@
+orders: release the reservation when an order is cancelled
+
+The status is written first: a release we never sent is repeated by the next
+cancel, while an order that is released but still open is a shelf that lies.

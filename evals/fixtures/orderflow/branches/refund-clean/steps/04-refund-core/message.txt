@@ -1,0 +1,5 @@
+orders: refund an order in the service
+
+Part or all of an order that was paid for, priced from the lines that came
+back and recorded on the order so the total given back can be read off it.
+The caller's key makes a repeat answer with the refund it already has.

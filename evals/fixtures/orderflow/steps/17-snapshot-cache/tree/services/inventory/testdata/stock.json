@@ -1,0 +1,7 @@
+[
+  {"sku": "desk-lamp", "on_hand": 42},
+  {"sku": "desk-lamp-shade", "on_hand": 17},
+  {"sku": "monitor-arm", "on_hand": 8},
+  {"sku": "cable-tray", "on_hand": 130},
+  {"sku": "footrest", "on_hand": 0}
+]

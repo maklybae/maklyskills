@@ -1,0 +1,1 @@
+tools: cover the status generator with tests

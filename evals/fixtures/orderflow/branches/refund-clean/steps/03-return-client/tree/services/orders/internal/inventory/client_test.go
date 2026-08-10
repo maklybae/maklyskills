@@ -1,0 +1,270 @@
+package inventory_test
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"orderflow/pkg/httputil"
+	"orderflow/services/orders/internal/core"
+	"orderflow/services/orders/internal/inventory"
+	"orderflow/services/orders/internal/testsupport"
+)
+
+func TestMain(m *testing.M) {
+	testsupport.Main(m)
+}
+
+func TestReserveSendsTheOrderLines(t *testing.T) {
+	var (
+		gotPath string
+		gotBody map[string]any
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := newClient(t, server)
+	reservation := core.StockReservation{
+		OrderID: "ord_1",
+		Items:   []core.Item{{SKU: "desk-lamp", Quantity: 2, UnitPrice: 4900}},
+	}
+	if err := client.Reserve(context.Background(), reservation); err != nil {
+		t.Fatalf("Reserve() error = %v", err)
+	}
+
+	if gotPath != "/reservations" {
+		t.Errorf("path = %q, want %q", gotPath, "/reservations")
+	}
+	if gotBody["order_id"] != "ord_1" {
+		t.Errorf("order_id = %v, want ord_1", gotBody["order_id"])
+	}
+	lines, ok := gotBody["lines"].([]any)
+	if !ok || len(lines) != 1 {
+		t.Fatalf("lines = %v, want one line", gotBody["lines"])
+	}
+}
+
+func TestReleaseSendsTheOrderID(t *testing.T) {
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := newClient(t, server)
+	release := core.StockRelease{OrderID: "ord_1", Reason: "customer changed their mind"}
+	if err := client.Release(context.Background(), release); err != nil {
+		t.Fatalf("Release() error = %v", err)
+	}
+
+	if gotPath != "/reservations/release" {
+		t.Errorf("path = %q, want %q", gotPath, "/reservations/release")
+	}
+}
+
+func TestRestockSendsTheReturnedLines(t *testing.T) {
+	var (
+		gotPath string
+		gotBody map[string]any
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	ret := core.StockReturn{
+		OrderID: "ord_1",
+		Lines:   []core.Item{{SKU: "desk-lamp", Quantity: 1, UnitPrice: 4900}},
+	}
+	if err := newClient(t, server).Restock(context.Background(), ret); err != nil {
+		t.Fatalf("Restock() error = %v", err)
+	}
+
+	if gotPath != "/stock/returns" {
+		t.Errorf("path = %q, want %q", gotPath, "/stock/returns")
+	}
+	if gotBody["order_id"] != "ord_1" {
+		t.Errorf("order_id = %v, want ord_1", gotBody["order_id"])
+	}
+	lines, ok := gotBody["lines"].([]any)
+	if !ok || len(lines) != 1 {
+		t.Fatalf("lines = %v, want one line", gotBody["lines"])
+	}
+}
+
+func TestRestockGoesThroughTheConfiguredClient(t *testing.T) {
+	var gotID string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotID = r.Header.Get(httputil.HeaderRequestID)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	ret := core.StockReturn{OrderID: "ord_1", Lines: []core.Item{{SKU: "desk-lamp", Quantity: 1}}}
+	if err := newClient(t, server).Restock(requestContext(t, "req-42"), ret); err != nil {
+		t.Fatalf("Restock() error = %v", err)
+	}
+	if gotID != "req-42" {
+		t.Errorf("request id = %q, want the caller's id carried across the hop", gotID)
+	}
+
+	// A peer that accepts the connection and then says nothing must not hold the
+	// call open past the timeout the client was given.
+	quiet := make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		<-quiet
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer func() {
+		close(quiet)
+		slow.Close()
+	}()
+
+	impatient, err := inventory.NewClient(slow.URL, inventory.WithHTTPClient(&http.Client{Timeout: 100 * time.Millisecond}))
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- impatient.Restock(context.Background(), ret)
+	}()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("Restock() = nil, want the timeout back")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Restock() ignored the timeout of the client it was given")
+	}
+}
+
+// requestContext builds the context a handler would be running under, request
+// id and all.
+func requestContext(t *testing.T, id string) context.Context {
+	t.Helper()
+
+	var ctx context.Context
+	handler := httputil.Chain(
+		http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { ctx = r.Context() }),
+		httputil.RequestID(),
+	)
+
+	request := httptest.NewRequest(http.MethodPost, "/orders/ord_1/refund", nil)
+	request.Header.Set(httputil.HeaderRequestID, id)
+	handler.ServeHTTP(httptest.NewRecorder(), request)
+	return ctx
+}
+
+func TestRestockReportsWhatInventorySays(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = io.WriteString(w, `{"error":{"code":"invalid_request","message":"line of nothing"}}`)
+	}))
+	defer server.Close()
+
+	err := newClient(t, server).Restock(context.Background(), core.StockReturn{
+		OrderID: "ord_1",
+		Lines:   []core.Item{{SKU: "desk-lamp", Quantity: 1}},
+	})
+	if !errors.Is(err, core.ErrInvalidRequest) {
+		t.Fatalf("Restock() error = %v, want %v", err, core.ErrInvalidRequest)
+	}
+}
+
+func TestRestockStopsWhenTheCallerGivesUp(t *testing.T) {
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		<-release
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer func() {
+		close(release)
+		server.Close()
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- newClient(t, server).Restock(ctx, core.StockReturn{
+			OrderID: "ord_1",
+			Lines:   []core.Item{{SKU: "desk-lamp", Quantity: 1}},
+		})
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("Restock() = nil, want the cancelled context back")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Restock() ignored the cancelled context")
+	}
+}
+
+func TestResponseMapping(t *testing.T) {
+	tests := []struct {
+		name    string
+		status  int
+		wantErr error
+	}{
+		{name: "accepted", status: http.StatusOK},
+		{name: "not enough stock", status: http.StatusConflict, wantErr: core.ErrOutOfStock},
+		{name: "rejected request", status: http.StatusBadRequest, wantErr: core.ErrInvalidRequest},
+		{name: "inventory is broken", status: http.StatusInternalServerError, wantErr: inventory.ErrUnexpectedResponse},
+		{name: "endpoint is gone", status: http.StatusNotFound, wantErr: inventory.ErrUnexpectedResponse},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+				_, _ = io.WriteString(w, `{"error":{"code":"out_of_stock","message":"3 available"}}`)
+			}))
+			defer server.Close()
+
+			err := newClient(t, server).Reserve(context.Background(), core.StockReservation{OrderID: "ord_1"})
+			if tt.wantErr == nil {
+				if err != nil {
+					t.Fatalf("Reserve() error = %v", err)
+				}
+				return
+			}
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("Reserve() error = %v, want %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNewClientNeedsABaseURL(t *testing.T) {
+	if _, err := inventory.NewClient("  "); err == nil {
+		t.Fatal("NewClient(\"\") = nil, want an error")
+	}
+}
+
+func newClient(t *testing.T, server *httptest.Server) *inventory.Client {
+	t.Helper()
+
+	client, err := inventory.NewClient(server.URL, inventory.WithHTTPClient(server.Client()))
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	return client
+}

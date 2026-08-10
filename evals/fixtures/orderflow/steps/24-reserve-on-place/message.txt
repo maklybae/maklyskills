@@ -1,0 +1,5 @@
+orders: reserve stock when an order is placed
+
+An order we cannot cover from the shelf is refused instead of accepted and
+cleaned up later. If the order does not reach the store, the reservation is
+given back.

@@ -1,0 +1,5 @@
+orders: guard the memory store with optimistic locking
+
+Two writers that load the same order both get their change stored today and
+the second one wins silently. Orders carry a version now and Update refuses
+a write built on a stale copy.

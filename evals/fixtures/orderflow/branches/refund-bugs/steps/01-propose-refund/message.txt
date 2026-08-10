@@ -1,0 +1,6 @@
+docs: propose the refund flow
+
+Cancel stops an order before it ships; everything after that is finance
+moving money by hand and nobody writing down which order it belonged to.
+Two deltas: when an order may be refunded, and what happens to the lines
+that come back.

@@ -1,0 +1,7 @@
+# Spec root for the orders service. The inventory service does not keep specs
+# yet, so nothing outside services/orders belongs here.
+version: 1
+root: services/orders
+specs: specs
+changes: changes
+archive: changes/archive
