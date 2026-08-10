@@ -66,6 +66,13 @@ written without looking. Go look, then write the one that is true.
 completion is a matter of opinion. If no command can prove it, the stage is
 described at the wrong altitude — split it until one can.
 
+**A stage that changes a shared surface verifies every consumer.** Building the
+one binary you are working in proves nothing about the others that compile the
+same symbol — find who else consumes the changed constructor, function, or type,
+and put a build that covers all of them on that stage's Verify line. "Build Ok"
+scoped to one consumer is the exact shape of a miss that surfaces two stages
+later as someone else's compile error.
+
 **Tests belong to the stage that adds the logic.** A final "write the tests"
 stage is where coverage goes to die: by then the deadline is closer, the
 behaviour is fuzzy, and the tests get written to match the code rather than the
