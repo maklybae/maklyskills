@@ -23,9 +23,12 @@ as you like. Fast feedback is what keeps a mistake one edit old instead of ten.
 separate. Scoped runs miss exactly the failures that matter most: the ones your
 change caused somewhere you were not looking.
 
-Where the language has a race detector or equivalent sanitiser, use it. Races
-are invisible without it, and in some toolchains a single race takes down the
-whole test binary and reports as unrelated neighbouring failures.
+Where the language has a race detector or equivalent sanitiser, use it — **in
+the scoped runs too, not only the final one**. A race caught at the stage that
+introduced it is a one-edit fix; caught in the closing sweep, it surfaces after
+other code has been built on top of it. Races are invisible without the
+detector, and in some toolchains a single race takes down the whole test binary
+and reports as unrelated neighbouring failures.
 
 ## Evidence
 

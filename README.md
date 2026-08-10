@@ -69,6 +69,11 @@ is exactly the material that gets self-censored once it is visible in a shared
 tree. The findings list is what makes the review loop converge: a finding
 recorded as consciously accepted is not raised again.
 
+## Credits
+
+The plan gate's interview protocol adapts ideas from Matt Pocock's
+[grilling](https://github.com/mattpocock/skills) skill (MIT).
+
 ## Adding a skill
 
 One directory under `skills/`, containing `SKILL.md` with `name` and

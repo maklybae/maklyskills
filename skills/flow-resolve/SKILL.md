@@ -117,6 +117,20 @@ Everything else is unchanged: verdicts still get reasons, and the closing report
 still leads with what was consciously accepted — with an unattended run it is
 the first thing the user reads when they come back.
 
+## Exit cleanup
+
+Whichever way the loop ends — converged or budget exhausted — the last round's
+fixes are code nobody cleaned: they landed under review pressure, which is
+exactly the state that produces stray comments, defensive scaffolding and
+hurried tests. The rule that substantial fixes earn a cleanup before *re-review*
+never fires for the final round, because there is no re-review after it.
+
+So before the closing report, when any fixes landed after the last cleanup pass,
+run `flow-cleanup` over the change's full diff and re-run verification. This is
+safe after the final review precisely because cleanup is bound to preserve
+behaviour and ends in a verification run — it does not reopen the review, it
+removes the one stretch of unclean code the pipeline would otherwise ship.
+
 ## Closing report
 
 When the loop converges, give the user: how many rounds, findings by severity,

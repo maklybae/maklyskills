@@ -66,6 +66,13 @@ written without looking. Go look, then write the one that is true.
 completion is a matter of opinion. If no command can prove it, the stage is
 described at the wrong altitude — split it until one can.
 
+**A stage that changes a shared surface verifies every consumer.** Building the
+one binary you are working in proves nothing about the others that compile the
+same symbol — find who else consumes the changed constructor, function, or type,
+and put a build that covers all of them on that stage's Verify line. "Build Ok"
+scoped to one consumer is the exact shape of a miss that surfaces two stages
+later as someone else's compile error.
+
 **Tests belong to the stage that adds the logic.** A final "write the tests"
 stage is where coverage goes to die: by then the deadline is closer, the
 behaviour is fuzzy, and the tests get written to match the code rather than the
@@ -98,3 +105,13 @@ changing it after implementation costs the implementation.
 Present it compactly — the stage titles and what each produces — and offer the
 detail rather than dumping it. If the user says to go ahead without reading, go
 ahead; it is their call and their time.
+
+**When the plan has real forks, the gate becomes an interview.** One obvious
+approach and no risky stage — present compactly, one exchange, as above. Real
+trade-offs — walk them with the user one at a time, in dependency order, each
+with your recommended answer and its reason: several questions at once are
+bewildering, and a question without a recommendation outsources the thinking.
+Two rules keep it honest. A fact is never a question — if the repository, the
+history or the docs can answer it, exploration left a gap, so go look. And only
+decisions that change the work earn a question. Unattended runs cannot
+interview; the ledger's ASSUMED protocol owns that case.
