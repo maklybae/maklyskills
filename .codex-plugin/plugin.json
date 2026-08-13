@@ -1,0 +1,34 @@
+{
+  "name": "maklyskills",
+  "version": "0.1.0",
+  "description": "A staged software-development flow and focused code-quality skills.",
+  "author": {
+    "name": "Maxim Klychkov"
+  },
+  "license": "MIT",
+  "keywords": [
+    "workflow",
+    "code-review",
+    "refactoring",
+    "planning",
+    "testing"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Makly Skills",
+    "shortDescription": "A rigorous development flow for real repositories.",
+    "longDescription": "Explore, plan, implement, test, clean up, review, and resolve changes with a durable task ledger, plus focused anti-slop passes.",
+    "developerName": "Maxim Klychkov",
+    "category": "Productivity",
+    "capabilities": [
+      "Code review",
+      "Planning",
+      "Testing"
+    ],
+    "defaultPrompt": [
+      "Use $flow to take this task through the full development cycle.",
+      "Use $flow-review to review my current change.",
+      "Use $anti-slop-code to tighten this diff."
+    ]
+  }
+}

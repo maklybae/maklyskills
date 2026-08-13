@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clean a Diff"
+  short_description: "Remove slop and weak tests safely."
+  default_prompt: "Use $flow-cleanup to clean this diff before review."

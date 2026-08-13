@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement a Plan"
+  short_description: "Build an approved plan in repository style."
+  default_prompt: "Use $flow-implement to build the approved plan."

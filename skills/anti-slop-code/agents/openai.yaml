@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clean Code"
+  short_description: "Remove AI slop without changing behavior."
+  default_prompt: "Use $anti-slop-code to tighten this code without changing behavior."

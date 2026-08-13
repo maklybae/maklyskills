@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review a Change"
+  short_description: "Find verified risks in a code change."
+  default_prompt: "Use $flow-review to find verified risks in this change."

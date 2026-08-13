@@ -1,0 +1,4 @@
+interface:
+  display_name: "Resolve Findings"
+  short_description: "Assess and resolve review findings."
+  default_prompt: "Use $flow-resolve to assess and fix these review findings."

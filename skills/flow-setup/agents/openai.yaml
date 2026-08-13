@@ -1,0 +1,4 @@
+interface:
+  display_name: "Set Up Flow"
+  short_description: "Discover repository commands and rules."
+  default_prompt: "Use $flow-setup to discover this repository commands."

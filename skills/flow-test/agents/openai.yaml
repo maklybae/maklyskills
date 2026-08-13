@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify a Change"
+  short_description: "Run and record repository verification."
+  default_prompt: "Use $flow-test to run and record this repository verification."
