@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explore a Task"
+  short_description: "Investigate a change before planning."
+  default_prompt: "Use $flow-explore to investigate this change before planning."

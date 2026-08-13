@@ -1,0 +1,4 @@
+interface:
+  display_name: "Flow"
+  short_description: "Run a full development workflow."
+  default_prompt: "Use $flow to take this task through the full development cycle."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan a Change"
+  short_description: "Create a verifiable implementation plan."
+  default_prompt: "Use $flow-plan to turn this task into a verifiable implementation plan."

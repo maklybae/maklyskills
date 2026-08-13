@@ -3,7 +3,7 @@
   "owner": {
     "name": "Maxim Klychkov"
   },
-  "description": "Personal Claude Code skills: a reusable development pipeline plus focused single-purpose skills.",
+  "description": "Personal cross-agent skills: a reusable development pipeline plus focused single-purpose skills.",
   "plugins": [
     {
       "name": "maklyskills",
