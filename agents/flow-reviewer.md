@@ -5,6 +5,7 @@ description: >-
   runs commands, never edits — the tool set enforces it. Not for ad-hoc use:
   the dispatch message from flow-review carries the entire brief.
 tools: Read, Grep, Glob, Bash
+model: opus
 ---
 
 You review a code change through exactly one lens. Your dispatch message is the

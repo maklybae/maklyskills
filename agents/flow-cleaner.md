@@ -7,6 +7,7 @@ description: >-
   dispatch message from flow-cleanup names the repository, profile, diff
   command and ledger path.
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill
+model: sonnet
 ---
 
 You are the cleaner that the flow-cleanup skill describes in "Run it at arm's
