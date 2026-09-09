@@ -1,6 +1,7 @@
 # maklyskills
 
-Personal Claude Code skill bundle, installable as a plugin.
+Personal skill bundle for Claude Code, Codex, and ChatGPT Work, installable as
+a plugin.
 
 Two kinds of skill live here:
 
@@ -14,9 +15,13 @@ Two kinds of skill live here:
 ## Install
 
 ```bash
-# in Claude Code
+# Claude Code
 /plugin marketplace add ~/maklyskills
 /plugin install maklyskills@maklyskills
+
+# Codex CLI / ChatGPT desktop app
+codex plugin marketplace add ~/maklyskills
+# Then install maklyskills from the marketplace and start a new task.
 ```
 
 From another machine, point the marketplace at the git remote instead of the
@@ -39,7 +44,8 @@ finding.
 
 `flow` is the umbrella skill: it routes to a stage, owns the task ledger, and
 knows how to resume. `flow-setup` detects a repository's commands once and
-writes them to `.claude/flow-profile.md`.
+writes them to `.claude/flow-profile.md`. This remains the canonical shared
+profile location for both hosts.
 
 Stage 5 is a dispatcher over the two focused skills: `anti-slop-code` cleans the
 code, `anti-slop-tests` prunes the suite. Both work standalone — on a package a
@@ -83,7 +89,7 @@ The plan gate's interview protocol adapts ideas from Matt Pocock's
 ## Adding a skill
 
 One directory under `skills/`, containing `SKILL.md` with `name` and
-`description` frontmatter. The description is the only thing Claude sees before
+`description` frontmatter. The description is the only thing an agent sees before
 deciding to use the skill, so it carries both what the skill does and the
 situations that should trigger it. Reference material goes in `references/`
 beside it and is read on demand.
