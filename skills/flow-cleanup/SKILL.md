@@ -29,15 +29,23 @@ believe in — an author deletes less than the doctrine asks, and by the end of 
 long task the context doing the deleting is also the most expensive one to
 spend. A fresh reader owes the diff nothing.
 
-Dispatch it as a `flow-cleaner` agent — the bundle ships it, and its tool set
-cannot dispatch agents of its own, so the recursion this section would
-otherwise invite is closed by construction. Where the bundle's agents are not
-installed, fall back to `general-purpose`. Give the subagent: this skill and
-anti-slop-code, the profile, the diff command from its `## VCS` section, and
-the ledger path for the flags. It edits, re-runs the full verification, and
-returns the report from Finish below; you carry its behavioural flags into the
-ledger. If you are that subagent — the dispatch named you the cleaner — skip
+In Codex, dispatch this stage to one fresh subagent. On Claude Code, use the
+bundled `flow-cleaner` agent; elsewhere, give a fresh agent the same
+constraints. Give it this skill, anti-slop-code and anti-slop-tests, the
+profile, the diff command from its `## VCS` section, and the ledger path for the
+flags. It edits, re-runs the full verification, and returns the report from
+Finish below; you carry its behavioural flags into the ledger. Only if
+subagents are disabled or unavailable, perform the two passes yourself in a
+fresh review phase before continuing. If you are the dispatched cleaner, skip
 this section and do the passes.
+
+**Once the cleaner's report is back, this stage is over.** Read the report and
+fold its flags into the ledger — do not re-run Pass 1, Pass 2 or Finish
+yourself. The cleaner already ran the full verification as its last step; doing
+it again in the dispatcher's context proves nothing new and doubles the cost
+for free. Everything from here down (Pass 1 through Finish) is the cleaner's
+job, or yours only in the no-subagent fallback above — not a checklist for the
+dispatcher to repeat after the fact.
 
 ## Pass 1 — the code
 
@@ -89,6 +97,10 @@ when it is the last thing standing between a branch and silence.
   nobody will do.
 
 ## Finish
+
+*(This is the cleaner's step — see "Run it at arm's length" above. If you are
+the dispatcher reading this after the cleaner reported back, you already have
+its verification result; do not run this again.)*
 
 Re-run the full verification. Cleanup is the stage most likely to break
 something quietly, precisely because deletion feels safe.
