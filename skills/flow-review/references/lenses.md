@@ -115,6 +115,10 @@ regulated behaviour, a cross-team agreement.
 Five lenses is the default and fits most changes. Adjust by what the change
 actually is, not by its size:
 
+- Code the profile marks **core** earns the lenses its risk implies rather than
+  the default five — data-format compatibility wherever state persists,
+  concurrency wherever there is more than one writer. **Peripheral** code can
+  drop to correctness, integration and tests.
 - A schema, migration, or data-format change earns a **bespoke lens** on that
   alone: forward and backward compatibility, what happens to rows written by the
   old code, what a rollback does.

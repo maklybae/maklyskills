@@ -27,19 +27,33 @@ the ledger's `base:` line. Run it. Confirm it is non-empty and that its size is
 what you expect before spending five subagents on it — a bad ref discovered
 inside the fan-out wastes the whole round.
 
+The diff bounds what gets **read**, not what may be reported. The unit of scope
+is the **touched function**: a defect in unchanged lines of a function this
+change edits is in scope, because the change re-exposed it and had the chance to
+fix it. Code the change never came near is not. What the wider scope must not do
+is blur who introduced what, which is why every finding carries an `origin` —
+the reviewer prompt owns how that is established, and it needs the profile's
+`file at base` command to do it.
+
 ## 2. Build the context packet
 
 Everything the reviewers share, assembled once:
 
 - The **diff command** and the file list — not the diff pasted inline. They need
   to read the surrounding code anyway, so give them the means, not a snapshot.
+- The **file-at-base command** from the profile's `## VCS` section, which is how
+  a reviewer establishes origin instead of guessing it.
 - The **task** — the ledger's `## Task`, so a finding can be judged against
   intent instead of guessed at.
-- The **profile's** stack, commands and constraints.
+- The **profile's** stack, commands and constraints. Not its criticality:
+  severity describes what a defect costs, and a reviewer told the code is
+  peripheral starts discounting findings it should simply be reporting. That
+  section belongs to `flow-resolve`, which decides what to do about them.
 - **Previously settled findings** — every ledger finding with a verdict of
-  `accepted` or `rejected`, verbatim with its reason. This is what makes the
-  loop converge: without it a fresh reviewer re-derives the same suggestion
-  every round, forever.
+  `accepted`, `rejected` or `deferred`, verbatim with its reason. This is what
+  makes the loop converge: without it a fresh reviewer re-derives the same
+  suggestion every round, forever, and inherited defects are the ones it
+  re-derives most reliably.
 - **Out of scope**, stated plainly: comments, formatting and naming style
   (`flow-cleanup` owns them), and conformance to the written spec unless the
   user asked for that lens.
@@ -47,7 +61,8 @@ Everything the reviewers share, assembled once:
 ## 3. Dispatch the lenses in parallel
 
 Pick the lens set from [references/lenses.md](references/lenses.md) — the five
-defaults unless the change or the user calls for more. Fill
+defaults unless the change, the profile's criticality, or the user calls for
+more. Fill
 [references/reviewer-prompt.md](references/reviewer-prompt.md) once per lens and
 send **all of the Agent calls in a single message** so they run concurrently.
 Dispatch each lens as a `flow-reviewer` agent — the bundle ships it, and its
@@ -66,8 +81,11 @@ quota will fill it with noise.
 - **Deduplicate.** The same defect will arrive from two lenses in two
   vocabularies. Keep the version with the concrete failure scenario.
 - **Drop what is already settled.** If a finding restates one the ledger marks
-  `accepted` or `rejected`, drop it — unless it brings genuinely new
+  `accepted`, `rejected` or `deferred`, drop it — unless it brings genuinely new
   information, in which case say what changed.
+- **Never drop a finding for being inherited.** `pre-existing` is a field, not a
+  filter: the finding is recorded, and `flow-resolve` decides what it is worth.
+  A defect thrown away here leaves no trace that anyone ever saw it.
 - **Rank** by severity: blocker, serious, minor. The ladder is defined in the
   prompt template; use it unchanged so severities mean the same thing across
   rounds.
@@ -84,9 +102,10 @@ the ledger is at
 in `../flow/references/ledger.md` relative to this skill's directory. Ids are never reused, so that "R7 is back" stays a meaningful
 sentence.
 
-Report to the user compactly — id, severity, `file:line`, and the one-line
-failure scenario. No praise section, no summary of what the code does: they
-wrote it. If a lens found nothing, say so in one line; that is information too.
+Report to the user compactly — id, severity, origin, `file:line`, and the
+one-line failure scenario. No praise section, no summary of what the code does:
+they wrote it. If a lens found nothing, say so in one line; that is information
+too.
 
 Then hand over to `flow-resolve`, which gives every finding a verdict.
 

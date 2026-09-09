@@ -59,8 +59,9 @@ running all night.
 ## Two files carry the state
 
 **`<project-root>/.claude/flow-profile.md`** — per repository. Build, test, lint
-and codegen commands, VCS and base ref, whether specs are expected, which rule
-files bind, which traps to avoid. Written by `flow-setup` after it has watched
+and codegen commands, VCS and base ref, how critical the code is and what this
+repository accepts trading away, whether specs are expected, which rule files
+bind, which traps to avoid. Written by `flow-setup` after it has watched
 the commands succeed. This is the only file the pipeline puts in the repository,
 because it is about the repository; it stays untracked unless you decide
 otherwise, and the skills never touch your ignore files.
@@ -71,7 +72,8 @@ their rejected alternatives, open questions, and every review finding with its
 verdict. It holds dead ends and "we consciously decided not to fix this", which
 is exactly the material that gets self-censored once it is visible in a shared
 tree. The findings list is what makes the review loop converge: a finding
-recorded as consciously accepted is not raised again.
+recorded as consciously accepted — or as a defect this change inherited rather
+than caused — is not raised again.
 
 ## Credits
 

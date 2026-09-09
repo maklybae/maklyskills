@@ -77,8 +77,10 @@ time:
 
 - **After the plan.** This is the cheapest place to change direction and the
   most expensive place to be wrong.
-- **Before accepting a blocker finding.** Consciously shipping a known serious
-  defect is the user's call, never yours.
+- **Before accepting a blocker this change introduced.** Consciously shipping a
+  known serious defect is the user's call, never yours. A blocker the change
+  merely inherited is reported and deferred, not escalated — it is not a
+  decision anyone is making today.
 - **Before anything outward-facing** — commit, push, PR. The profile's VCS
   section says *how*; the user says *whether*.
 
@@ -105,9 +107,9 @@ under.
 
 **The three gates do not vanish when nobody can answer. They change shape.**
 
-- **A blocker is fixed or the run stops, and the review loop runs on a round
-  budget.** Both rules and the budget's default are `flow-resolve`'s — apply
-  them unchanged.
+- **A blocker the change introduced is fixed or the run stops, and the review
+  loop runs on a round budget.** Both rules and the budget's default are
+  `flow-resolve`'s — apply them unchanged.
 - **A question you cannot ask is not permission to guess quietly.** Do
   everything that does not depend on the answer, take the most conservative
   reading of what remains, and record it as `ASSUMED` — the ledger schema owns

@@ -61,14 +61,21 @@ same one line proves or disproves it. If it really is pre-existing, note it in
 the ledger and leave it alone; fixing it silently inside this change makes the
 diff harder to review.
 
+**A test green in the last full run and red now is yours.** That is the same
+claim in the other direction, and it needs the same evidence before it can be
+called unrelated. It matters most under repair, where a regression explained
+away as flakiness is a defect the suite had already caught once.
+
 ## Record it
 
 Append to `## Verification` in the ledger —
 `~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`, schema
 in `../flow/references/ledger.md` relative to this skill's directory — the date,
-the exact command, and the result.
+the exact command, and the result, and mark the full runs as full.
 Later stages and review subagents read those lines to know what has actually
-been proven, and a stale one is worse than none.
+been proven, and a stale one is worse than none. The last full line does
+double duty: it is the baseline a later fix is measured against, which a scoped
+run cannot be — it is green in exactly the places nobody changed.
 
 ## Not in this stage
 

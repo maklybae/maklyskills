@@ -54,8 +54,8 @@ command and run again. Do not write down a command you have not seen work.
 **4. Ask only what is left.** Detection settles most of the profile. Ask the
 user only where two plausible answers remain and the choice is theirs — which of
 two test entry points they prefer, what the base branch is, whether spec
-artifacts are expected for changes in this repository. One round of questions,
-not an interview.
+artifacts are expected for changes in this repository, how critical the code is
+where the signals below disagree. One round of questions, not an interview.
 
 **5. Write the file** using the schema in
 [references/profile.md](references/profile.md). Fixed headings, free text
@@ -66,6 +66,21 @@ have to be predictable, while the content stays something a human can edit.
 `.gitignore`, or whatever the repository's ignore file is: those are shared
 files, and editing one on your own initiative to hide a file you just created is
 a bigger intrusion than the untracked file itself. If they want it committed or ignored, they will say so.
+
+## Judging criticality
+
+`## Criticality` is the one section that is a judgement rather than a detection,
+and it is the one every later close call reads. The signals, in the order they
+settle the question: who imports this code — a package with consumers outside
+its own tree is core almost regardless of what it does; whether it owns
+persistent state or a schema, because a rollback does not undo a write; whether
+a deploy manifest, an on-call rotation or an alert names it; and whether the
+tree is a scratch surface — fixtures, scripts, an admin page nobody is paged
+for.
+
+Where the signals disagree, ask. It is one question with a durable answer, which
+makes it the cheapest question in the pipeline — cheaper by far than the same
+judgement re-derived, differently, in every review round.
 
 ## Which directory is the project root
 

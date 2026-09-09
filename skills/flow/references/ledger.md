@@ -72,18 +72,24 @@ edited only when the scope actually changes.
   was taken and this leads the final report.
 
 ## Findings
-### R4 · blocker · correctness · internal/storage/repository.go:88
+### R4 · blocker · introduced · correctness · internal/storage/repository.go:88
 Two concurrent Upserts on the same key lose the newer row: read-modify-write
 outside a transaction.
 Verdict: fixed — wrapped in a transaction, test `TestUpsertConcurrent`.
 
-### R5 · minor · tests · internal/storage/repository_test.go:12
+### R5 · minor · introduced · tests · internal/storage/repository_test.go:12
 No case for an empty digest.
 Verdict: accepted — the only caller validates the digest at the transport layer,
 so a test here pins a state that cannot occur.
 
+### R6 · serious · pre-existing · robustness · internal/storage/blob.go:41
+A failed delete in the object store is reported to the caller as a success.
+Verdict: deferred — `main@a1b2c3d:internal/storage/blob.go:39` drops the same
+error; this change only moved the call. Offered as a separate task.
+
 ## Verification
 - 2026-08-07 `go test ./internal/storage/... -race` → 41 passed, 0 failed
+- 2026-08-07 (full) `go test ./... -race` → 612 passed, 0 failed
 ```
 
 ## Rules that matter
@@ -97,6 +103,26 @@ existing entry is the only edit.
 indistinguishable from `forgot to fix`. The reason is what a reviewer — human or
 subagent — reads to decide whether the acceptance still holds after the code
 moved.
+
+**Origin is part of the finding, not part of the verdict.** `pre-existing` says
+who introduced the defect; `blocker` says what it costs. A change can inherit a
+blocker, and softening one to `minor` because it is old collapses two facts that
+the next reader needs separately.
+
+The third origin is `from-fix`: introduced by an earlier round's repair rather
+than by the original work. Every rule that names `introduced` covers it — the
+distinction exists so that a review loop can count how much of its own work it
+is generating, which is the only signal that separates slow convergence from a
+loop feeding itself.
+
+**Mark the full verification runs.** The last full run is the baseline every
+later fix is measured against, and a scoped run cannot stand in for one: it is
+green in exactly the places nobody changed.
+
+**A `deferred` finding is settled.** It joins the next round's settled list
+exactly like an accepted one. Leave it out and every round rediscovers the same
+inherited defect, and the loop stops converging for a reason that is invisible
+in the diff.
 
 **Finding ids are stable and never reused.** `R7` means one thing forever, so
 that "R7 came back" is a meaningful sentence.
