@@ -44,13 +44,18 @@ because that one is about the repository rather than about you.
 | 2 | `flow-plan` | A staged plan (or an openspec change) exists and the user approved it |
 | 3 | `flow-implement` | Every stage of the plan is built and its own checks pass |
 | 4 | `flow-test` | The project's verification passes, with output produced in this session |
-| 5 | `flow-cleanup` | Slop and worthless tests are gone, behaviour unchanged, tests still green |
+| 5 | `flow-cleanup` | Slop and worthless tests are gone, behaviour unchanged, the cleaner's full verification recorded |
 | 6 | `flow-review` | Findings from parallel lenses, each verified, ranked, written to the ledger |
 | 7 | `flow-resolve` | Every finding has a verdict; the fixes are applied and verified |
 
 Stages 6 and 7 repeat. The loop stops when a full review round adds no new
 blocker or serious finding — not when you run out of patience, and not after a
 fixed number of rounds. `flow-resolve` owns the convergence rule.
+
+Stage 5 runs once, before the first review, and never between rounds.
+`flow-resolve` may run one more, narrower pass over the round fixes as its exit
+step. Whoever edits in a cleanup runs its verification, once; the dispatcher
+reads that line from the ledger and runs nothing again.
 
 ## Entering, resuming, skipping
 

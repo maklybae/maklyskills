@@ -21,7 +21,9 @@ as you like. Fast feedback is what keeps a mistake one edit old instead of ten.
 **Broad before declaring done.** Once, at the end, run what the profile's
 `## Commands` calls the full verification — plus lint and build if they are
 separate. Scoped runs miss exactly the failures that matter most: the ones your
-change caused somewhere you were not looking.
+change caused somewhere you were not looking. Once means once: when the
+ledger's last full line is newer than the last edit, it stands, whoever ran it,
+and running it again is not diligence.
 
 Where the language has a race detector or equivalent sanitiser, use it — **in
 the scoped runs too, not only the final one**. A race caught at the stage that
@@ -39,6 +41,13 @@ and what came back — counts, not adjectives.
 This is not ceremony. The failure mode it prevents is specific and common: code
 is changed, the change looks obviously right, the claim is made, and the suite
 was never run because the last run was four edits ago.
+
+Output produced by a subagent this task dispatched — the cleaner at its Finish,
+a reviewer running a probe — and recorded in the ledger's `## Verification`
+with its command and result is this session's output. Read the line; do not run
+the command again to see it with your own eyes. Whether a run stands is decided
+by whether it is newer than the last edit, not by who ran it, and repeating a
+run that stands proves nothing the line did not.
 
 ## Diagnosing a failure
 

@@ -177,7 +177,7 @@ that — you can, from the ledger. It counts as `introduced` under every rule
 above; the separate name exists so the loop can see where its own work is coming
 from.
 
-Four guards against spinning:
+Three guards against spinning:
 
 - **A loop that feeds itself stops.** Each round, count the findings closed
   against the new blocker and serious findings marked `from-fix`. When the
@@ -198,12 +198,13 @@ Four guards against spinning:
   do not, or the code needs to make its invariant explicit enough that a fresh
   reader stops tripping over it. Both outcomes are better than arguing with a
   subagent.
-- **Any round whose fixes touched non-test code earns a cleanup pass before the
-  next review**, not only the substantial ones. Fixes arrive with fresh
-  comments, defensive scaffolding and hurried tests, and that is precisely the
-  surface the next round finds its new findings on. It is the cheapest of these
-  guards and the one most often skipped, because the fixes felt small at the
-  time.
+
+Nothing else runs between rounds. In particular, a round's fixes are **not**
+cleaned before the next review: reviewers are told that comments, formatting
+and naming are out of their scope, so unclean fixes cost the review nothing,
+while a cleanup per round costs a fresh subagent and a full verification each
+time for code the next round is about to rewrite. The change was cleaned once
+before the first review; the only other pass is the narrow one at exit, below.
 
 ## When the run is unattended
 
@@ -231,17 +232,29 @@ the first thing the user reads when they come back.
 ## Exit cleanup
 
 Whichever way the loop ends — converged, budget exhausted, or stopped because
-the repairs had become the source of the findings — the last round's
-fixes are code nobody cleaned: they landed under review pressure, which is
+the repairs had become the source of the findings — the round fixes are the one
+stretch of code nobody cleaned: they landed under review pressure, which is
 exactly the state that produces stray comments, defensive scaffolding and
-hurried tests. The rule that substantial fixes earn a cleanup before *re-review*
-never fires for the final round, because there is no re-review after it.
+hurried tests. The implementation itself was cleaned before the first review
+and then reviewed; it is not cleaned again.
 
-So before the closing report, when any fixes landed after the last cleanup pass,
-run `flow-cleanup` over the change's full diff and re-run verification. This is
-safe after the final review precisely because cleanup is bound to preserve
-behaviour and ends in a verification run — it does not reopen the review, it
-removes the one stretch of unclean code the pipeline would otherwise ship.
+So before the closing report, when any round's fixes touched non-test code, run
+`flow-cleanup` once more, narrowed to those fixes: the files and lines the
+`fixed` verdicts name, plus the regression tests they added — those were red
+before their fix and green after, so they pass the rule of value by
+construction and stay. A loop that closed on accepts, rejects and deferrals
+alone leaves the diff exactly as it was cleaned; skip the pass and say so in
+one line.
+
+The pass is proportional. A handful of fix hunks is cleaned by you, in your own
+context, with the two anti-slop skills applied literally; only a loop that
+rewrote a substantial part of the change earns a dispatched cleaner. Either way
+the party that edits runs the full verification exactly once at the end of the
+pass and writes that line into the ledger — it is the closing baseline. Nothing
+runs after it: not `flow-test`, not the build, not the scoped tests the
+cleaner's report lists. The pass is safe after the final review precisely
+because cleanup is bound to preserve behaviour and ends in that verification;
+it does not reopen the review.
 
 ## Closing report
 

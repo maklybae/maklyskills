@@ -55,8 +55,11 @@ Everything the reviewers share, assembled once:
   suggestion every round, forever, and inherited defects are the ones it
   re-derives most reliably.
 - **Out of scope**, stated plainly: comments, formatting and naming style
-  (`flow-cleanup` owns them), and conformance to the written spec unless the
-  user asked for that lens.
+  (`flow-cleanup` owns them; it ran before the first review, and round fixes
+  are not cleaned between rounds, so from the second round on the diff carries
+  unclean fixes — a reviewer reports the defect under a comment, never the
+  comment), and conformance to the written spec unless the user asked for that
+  lens.
 
 ## 3. Dispatch the lenses in parallel
 

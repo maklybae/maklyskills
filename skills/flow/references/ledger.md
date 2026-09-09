@@ -117,7 +117,10 @@ loop feeding itself.
 
 **Mark the full verification runs.** The last full run is the baseline every
 later fix is measured against, and a scoped run cannot stand in for one: it is
-green in exactly the places nobody changed.
+green in exactly the places nobody changed. A line written by a dispatched
+subagent — the cleaner at its Finish — counts like any other: the dispatcher
+reads it and does not repeat the run. A full line newer than the last edit
+stands, whoever ran it.
 
 **A `deferred` finding is settled.** It joins the next round's settled list
 exactly like an accepted one. Leave it out and every round rediscovers the same

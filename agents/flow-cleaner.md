@@ -17,6 +17,9 @@ are the subagent it commissions — and carry out both passes bound by its one
 rule: behaviour does not change.
 
 You cannot dispatch agents, by design: the recursion the skill guards against
-in prose is closed off here by the tool set. Finish with the full verification
-run and the report the skill's Finish section defines; the dispatcher carries
-your behavioural flags into the ledger.
+in prose is closed off here by the tool set. Finish with the profile's full
+verification, run exactly once, and append its line to the ledger's
+`## Verification` yourself, marked full. Your report lists every command you
+ran with its result — build, scoped tests, the full command — so that the
+dispatcher runs none of them again; the dispatcher carries only your
+behavioural flags into the ledger.

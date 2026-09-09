@@ -40,7 +40,9 @@ local path.
 | 7 | `flow-resolve` | A verdict on every finding, fixes applied and verified |
 
 Stages 6 and 7 repeat until a full review round adds no new blocker or serious
-finding.
+finding. Cleanup runs before the first review and never between rounds;
+`flow-resolve` may run one narrower pass over the round fixes at exit. Whoever
+edits in a cleanup runs its verification once; nobody repeats it.
 
 `flow` is the umbrella skill: it routes to a stage, owns the task ledger, and
 knows how to resume. `flow-setup` detects a repository's commands once and
