@@ -56,45 +56,27 @@ reason the split exists.
 
 ## Pass 2 — the tests
 
-One rule decides every case:
+Run the `anti-slop-tests` skill on the same diff — it ships in this bundle
+alongside `anti-slop-code`, so when installed as a plugin it is listed under the
+bundle's prefix. It owns the rule of value (a test earns its place if it would
+fail when a plausible bug is introduced into the behaviour it names), the
+falsification probe that settles an arguable case by measurement, the catalogue
+of forms, and the delete-vs-rewrite split. Do not restate its rules here or
+improvise a lighter version — invoke it.
 
-> **A test earns its place if it would fail when a plausible bug is introduced
-> into the behaviour it names.**
+Two of its four verdicts come back to you rather than landing as edits:
 
-Apply it by naming the bug out loud. If no bug you can describe would turn this
-test red, it is not testing anything — it is describing the implementation back
-to itself, and it will need updating every time the implementation moves.
+- Everything it **flags** — a coverage gap the deletion exposed, a green test
+  asserting wrong behaviour, a flaky or skipped test — becomes a finding for the
+  ledger, exactly as with Pass 1's behavioural flags.
+- Its **rewrites** are the pass's real risk. A rewrite is a code edit wearing a
+  cleanup's clothes, so it is covered by the re-run below like any other.
 
-**Delete:**
-
-- Assertions on incidental output: log lines, the wording of a message, the
-  order of fields in a serialisation nobody parses.
-- Restatements of the implementation: a mock is told to return `X` and the test
-  asserts `X` came back; a call is verified with the arguments the test itself
-  just passed in.
-- Tests of the language, the framework, or a library: that a constructor assigns
-  the fields you gave it, that a getter returns its field, that the standard
-  library works.
-- Duplicate rows in a table test that walk the same branch with different data.
-  Distinct data through one path is one case, not five.
-- Tests pinned to an internal detail when the same behaviour is already covered
-  through the public entry point.
-
-**Keep, and strengthen:**
-
-- Contracts other code depends on — the module's observable behaviour.
-- Error branches, especially the ones that are awkward to trigger. Those are
-  exactly the paths nobody exercises by hand.
-- Boundaries: empty, zero, one, maximum, expired, malformed, concurrent.
-- Round trips: persistence, serialisation, backward compatibility with data that
-  already exists.
-- Regressions with a history. A test that exists because something once broke
-  earns its place permanently; make sure its name says what it protects.
-
-**The case that needs care** is a badly written test that is nevertheless the
-only coverage of a real branch. Rewrite it — do not delete it. Deletion is
-correct when the behaviour is covered elsewhere or was never worth covering; it
-is not correct when it is the last thing standing between a branch and silence.
+The one rule worth repeating here because it is the one most easily skipped
+under time pressure: a badly written test that is nevertheless the only coverage
+of a real branch gets **rewritten, not deleted**. Deletion is correct when the
+behaviour is covered elsewhere or was never worth covering; it is not correct
+when it is the last thing standing between a branch and silence.
 
 ## Also in scope
 

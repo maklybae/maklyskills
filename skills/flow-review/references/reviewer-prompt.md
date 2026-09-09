@@ -43,7 +43,10 @@ if you do, say explicitly what changed. Otherwise it is closed.
 
 Comments, formatting, naming style and code cosmetics are handled by a separate
 pass — do not report them. Neither the presence nor the absence of a comment is
-a finding. Do not report conformance to a written specification unless your lens
+a finding. The same pass owns test hygiene: that a test is redundant, badly
+written, or not worth keeping is not a finding either. A test enters your report
+only when a behaviour is left unguarded, and then the finding is the unguarded
+behaviour. Do not report conformance to a written specification unless your lens
 is specifically about that.
 
 Do not edit any file. You are read-only: your output is the report.

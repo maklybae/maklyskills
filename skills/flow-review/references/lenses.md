@@ -68,8 +68,17 @@ themselves supplied; tests that would break on a rename but not on a defect;
 missing regression coverage for a defect the change is meant to fix; fixtures
 that hide the interesting case; asynchronous tests that pass by timing luck.
 
+The catalogue of worthless-test forms lives in the `anti-slop-tests` skill. Use
+it to *recognise* them rather than re-deriving the list — but report the gap,
+not the hygiene. A test that asserts nothing means the behaviour it names is
+unprotected, and the unprotected behaviour is the finding; that the test is
+badly written is stage 5's business and it has already run. Where the behaviour
+turns out to be covered elsewhere, there is nothing here to report at all.
+
 *Not this lens:* whether existing unrelated tests are good — only tests this
-change should have brought with it, and the ones it touched.
+change should have brought with it, and the ones it touched. Nor test hygiene
+for its own sake: a worthless test is a finding here only when deleting it would
+leave a real behaviour with nothing guarding it.
 
 ### 5. Security and data handling
 

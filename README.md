@@ -8,8 +8,8 @@ Two kinds of skill live here:
   a reviewed change, one stage at a time. Nothing in it hardcodes a build
   system, VCS, or test runner; project-specific facts live in a per-repository
   profile.
-- **focused skills** — single-purpose passes usable on their own, such as
-  `anti-slop-code`.
+- **focused skills** — single-purpose passes usable on their own:
+  `anti-slop-code` for the code, `anti-slop-tests` for the test suite.
 
 ## Install
 
@@ -40,6 +40,10 @@ finding.
 `flow` is the umbrella skill: it routes to a stage, owns the task ledger, and
 knows how to resume. `flow-setup` detects a repository's commands once and
 writes them to `.claude/flow-profile.md`.
+
+Stage 5 is a dispatcher over the two focused skills: `anti-slop-code` cleans the
+code, `anti-slop-tests` prunes the suite. Both work standalone — on a package a
+model just filled with generated tests, `anti-slop-tests` is the whole job.
 
 ## Unattended runs
 
