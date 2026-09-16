@@ -44,13 +44,18 @@ because that one is about the repository rather than about you.
 | 2 | `flow-plan` | A staged plan (or an openspec change) exists and the user approved it |
 | 3 | `flow-implement` | Every stage of the plan is built and its own checks pass |
 | 4 | `flow-test` | The project's verification passes, with output produced in this session |
-| 5 | `flow-cleanup` | Slop and worthless tests are gone, behaviour unchanged, tests still green |
+| 5 | `flow-cleanup` | Slop and worthless tests are gone, behaviour unchanged, the cleaner's full verification recorded |
 | 6 | `flow-review` | Findings from parallel lenses, each verified, ranked, written to the ledger |
 | 7 | `flow-resolve` | Every finding has a verdict; the fixes are applied and verified |
 
 Stages 6 and 7 repeat. The loop stops when a full review round adds no new
 blocker or serious finding — not when you run out of patience, and not after a
 fixed number of rounds. `flow-resolve` owns the convergence rule.
+
+Stage 5 runs once, before the first review, and never between rounds.
+`flow-resolve` may run one more, narrower pass over the round fixes as its exit
+step. Whoever edits in a cleanup runs its verification, once; the dispatcher
+reads that line from the ledger and runs nothing again.
 
 ## Entering, resuming, skipping
 
@@ -77,8 +82,10 @@ time:
 
 - **After the plan.** This is the cheapest place to change direction and the
   most expensive place to be wrong.
-- **Before accepting a blocker finding.** Consciously shipping a known serious
-  defect is the user's call, never yours.
+- **Before accepting a blocker this change introduced.** Consciously shipping a
+  known serious defect is the user's call, never yours. A blocker the change
+  merely inherited is reported and deferred, not escalated — it is not a
+  decision anyone is making today.
 - **Before anything outward-facing** — commit, push, PR. The profile's VCS
   section says *how*; the user says *whether*.
 
@@ -105,9 +112,9 @@ under.
 
 **The three gates do not vanish when nobody can answer. They change shape.**
 
-- **A blocker is fixed or the run stops, and the review loop runs on a round
-  budget.** Both rules and the budget's default are `flow-resolve`'s — apply
-  them unchanged.
+- **A blocker the change introduced is fixed or the run stops, and the review
+  loop runs on a round budget.** Both rules and the budget's default are
+  `flow-resolve`'s — apply them unchanged.
 - **A question you cannot ask is not permission to guess quietly.** Do
   everything that does not depend on the answer, take the most conservative
   reading of what remains, and record it as `ASSUMED` — the ledger schema owns

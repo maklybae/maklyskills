@@ -17,6 +17,14 @@ repository's ignore files alone.
 Languages, frameworks, how the tree is laid out, where the code you touch lives.
 Two or three lines.
 
+## Criticality
+- core: `<paths>` — shared or infrastructural; a defect reaches callers who
+  cannot see it, and a rollback does not undo what it already wrote
+- service: `<paths>` — a production service with its own on-call and rollback
+- peripheral: `<paths>` — internal tooling, admin surfaces, scripts, fixtures
+- may be traded here: one line naming what this repository accepts skipping
+A level this repository does not have is omitted, not written empty.
+
 ## Commands
 - build: `<cmd> <dir>`
 - test (scoped): `<cmd> <dir>`
@@ -32,6 +40,7 @@ Omit a line rather than inventing one; "none" is a legitimate value.
 - tool: git | hg | svn | jj | none
 - base ref: the branch or revision changes are diffed against
 - diff vs base: `<cmd>`
+- file at base: `<cmd>` — one file as it stood at the base ref
 - ship: how a change reaches review here (commit → PR command, or "ask the user")
 
 ## Spec workflow
@@ -78,6 +87,19 @@ when two markers disagree. A task runner or CI config beats the language default
 whose only test command runs the entire monorepo will be skipped under time
 pressure, which is how unverified work ships. Give a scoped command and a full
 one, and let the stages choose.
+
+**Criticality.** This is what a close call reads when it has to decide how much
+robustness a change owes — and writing it down once is the point, because a
+judgement re-derived per task is a mood. The `may be traded` line carries most of
+the value: name the concrete thing this repository routinely lets go — two
+writes without a transaction that a retry reconciles anyway, a counter nobody
+alerts on — because a section that only forbids says nothing about what is
+allowed, which is the half that gets guessed wrong.
+
+**VCS.** `file at base` is how a reviewer tells a defect this change introduced
+from one it merely inherited. Without it that distinction is read off the diff
+alone, and the diff is silent exactly where it matters — in the code the change
+touched but did not write.
 
 **Rules.** Do not summarise every rule file — point at them, then call out the
 two or three that a fresh agent breaks most often here. The value is in the

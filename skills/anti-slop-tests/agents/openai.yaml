@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clean Tests"
+  short_description: "Prune weak tests and strengthen coverage."
+  default_prompt: "Use $anti-slop-tests to prune weak tests and strengthen coverage."

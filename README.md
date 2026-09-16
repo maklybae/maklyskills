@@ -1,6 +1,7 @@
 # maklyskills
 
-Personal Claude Code skill bundle, installable as a plugin.
+Personal skill bundle for Claude Code, Codex, and ChatGPT Work, installable as
+a plugin.
 
 Two kinds of skill live here:
 
@@ -8,15 +9,19 @@ Two kinds of skill live here:
   a reviewed change, one stage at a time. Nothing in it hardcodes a build
   system, VCS, or test runner; project-specific facts live in a per-repository
   profile.
-- **focused skills** — single-purpose passes usable on their own, such as
-  `anti-slop-code`.
+- **focused skills** — single-purpose passes usable on their own:
+  `anti-slop-code` for the code, `anti-slop-tests` for the test suite.
 
 ## Install
 
 ```bash
-# in Claude Code
+# Claude Code
 /plugin marketplace add ~/maklyskills
 /plugin install maklyskills@maklyskills
+
+# Codex CLI / ChatGPT desktop app
+codex plugin marketplace add ~/maklyskills
+# Then install maklyskills from the marketplace and start a new task.
 ```
 
 From another machine, point the marketplace at the git remote instead of the
@@ -35,11 +40,18 @@ local path.
 | 7 | `flow-resolve` | A verdict on every finding, fixes applied and verified |
 
 Stages 6 and 7 repeat until a full review round adds no new blocker or serious
-finding.
+finding. Cleanup runs before the first review and never between rounds;
+`flow-resolve` may run one narrower pass over the round fixes at exit. Whoever
+edits in a cleanup runs its verification once; nobody repeats it.
 
 `flow` is the umbrella skill: it routes to a stage, owns the task ledger, and
 knows how to resume. `flow-setup` detects a repository's commands once and
-writes them to `.claude/flow-profile.md`.
+writes them to `.claude/flow-profile.md`. This remains the canonical shared
+profile location for both hosts.
+
+Stage 5 is a dispatcher over the two focused skills: `anti-slop-code` cleans the
+code, `anti-slop-tests` prunes the suite. Both work standalone — on a package a
+model just filled with generated tests, `anti-slop-tests` is the whole job.
 
 ## Unattended runs
 
@@ -55,8 +67,9 @@ running all night.
 ## Two files carry the state
 
 **`<project-root>/.claude/flow-profile.md`** — per repository. Build, test, lint
-and codegen commands, VCS and base ref, whether specs are expected, which rule
-files bind, which traps to avoid. Written by `flow-setup` after it has watched
+and codegen commands, VCS and base ref, how critical the code is and what this
+repository accepts trading away, whether specs are expected, which rule files
+bind, which traps to avoid. Written by `flow-setup` after it has watched
 the commands succeed. This is the only file the pipeline puts in the repository,
 because it is about the repository; it stays untracked unless you decide
 otherwise, and the skills never touch your ignore files.
@@ -67,7 +80,8 @@ their rejected alternatives, open questions, and every review finding with its
 verdict. It holds dead ends and "we consciously decided not to fix this", which
 is exactly the material that gets self-censored once it is visible in a shared
 tree. The findings list is what makes the review loop converge: a finding
-recorded as consciously accepted is not raised again.
+recorded as consciously accepted — or as a defect this change inherited rather
+than caused — is not raised again.
 
 ## Credits
 
@@ -77,7 +91,7 @@ The plan gate's interview protocol adapts ideas from Matt Pocock's
 ## Adding a skill
 
 One directory under `skills/`, containing `SKILL.md` with `name` and
-`description` frontmatter. The description is the only thing Claude sees before
+`description` frontmatter. The description is the only thing an agent sees before
 deciding to use the skill, so it carries both what the skill does and the
 situations that should trigger it. Reference material goes in `references/`
 beside it and is read on demand.

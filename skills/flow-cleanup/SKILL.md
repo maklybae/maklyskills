@@ -5,12 +5,14 @@ description: >-
   comments and slop through the anti-slop-code pass, delete tests that would not
   fail if the behaviour they name broke, remove code the change orphaned and
   abstractions it invented for a single caller — all without changing
-  behaviour. Use this skill when the user says "почисти", "убери комментарии",
-  "выкинь лишние тесты", "clean this up", "refactor before review", when a
-  feature has just been implemented and tested and is about to be reviewed, or
-  whenever a diff has accumulated scaffolding. Prefer it over an ad-hoc tidy so
-  the comment doctrine and the test-value rule are applied the same way every
-  time.
+  behaviour. In the pipeline it runs once before the first review and at most
+  once more, narrowed to the review fixes, at the exit of flow-resolve; never
+  between review rounds. Use this skill when the user says "почисти", "убери
+  комментарии", "выкинь лишние тесты", "clean this up", "refactor before
+  review", when a feature has just been implemented and tested and is about to
+  be reviewed, or whenever a diff has accumulated scaffolding. Prefer it over an
+  ad-hoc tidy so the comment doctrine and the test-value rule are applied the
+  same way every time.
 ---
 
 # Flow cleanup
@@ -19,6 +21,27 @@ Two passes over the same diff, both bound by one rule: **behaviour does not
 change.** Everything here is deletion, inlining, or renaming. A hunk that
 changes what the program does belongs to implement or resolve — smuggling it in
 under "cleanup" is how a tidy-up ships a bug.
+
+## When it runs
+
+Twice at most per task, and never between review rounds.
+
+The full pass is stage 5: after `flow-test` has gone green and before the first
+review. Reviewers then read a diff without the comments that argue for the
+code, the tests that only look like coverage and the branches nothing reaches;
+what this pass flags becomes findings the loop actually resolves; and whatever
+it breaks quietly is caught by the review that follows.
+
+The second pass is `flow-resolve`'s exit step, and it is narrower: only the
+round fixes, only when some fix touched non-test code, and cleaned in place
+rather than dispatched unless the loop rewrote a substantial part of the
+change. `flow-resolve` owns that decision.
+
+Between rounds there is no cleanup. Reviewers are told that comments,
+formatting and naming are out of their scope, so unclean fixes cost the next
+round nothing, while a pass per round costs a context and a full verification
+every time for code the next round is about to rewrite. If you are about to run
+this stage with review rounds still ahead, stop.
 
 ## Run it at arm's length
 
@@ -29,15 +52,43 @@ believe in — an author deletes less than the doctrine asks, and by the end of 
 long task the context doing the deleting is also the most expensive one to
 spend. A fresh reader owes the diff nothing.
 
-Dispatch it as a `flow-cleaner` agent — the bundle ships it, and its tool set
-cannot dispatch agents of its own, so the recursion this section would
-otherwise invite is closed by construction. Where the bundle's agents are not
-installed, fall back to `general-purpose`. Give the subagent: this skill and
-anti-slop-code, the profile, the diff command from its `## VCS` section, and
-the ledger path for the flags. It edits, re-runs the full verification, and
-returns the report from Finish below; you carry its behavioural flags into the
-ledger. If you are that subagent — the dispatch named you the cleaner — skip
-this section and do the passes.
+Dispatch when the diff is large enough for a fresh context to pay for itself:
+as a default, more than roughly 200 changed lines or more than five files.
+Below that, or when subagents are unavailable, do the two passes yourself,
+applying anti-slop-code and anti-slop-tests literally rather than a lighter
+version from memory — a dispatched cleaner costs a context and a full
+verification, and on a small diff that outweighs the author's blind spot.
+
+In Codex, dispatch this stage to one fresh subagent. On Claude Code, use the
+bundled `flow-cleaner` agent; elsewhere, give a fresh agent the same
+constraints. Give it this skill, anti-slop-code and anti-slop-tests, the
+profile, the diff command from its `## VCS` section (or the narrowed scope, for
+the exit pass), and the ledger path. It edits, runs the full verification once,
+writes that line into the ledger's `## Verification` itself, and returns the
+report from Finish below; you carry its behavioural flags into the ledger as
+findings. If you are the dispatched cleaner, skip this section and do the
+passes.
+
+**Once the cleaner's report is back, this stage is over.** Read the report and
+fold its flags into the ledger — do not re-run Pass 1, Pass 2 or Finish
+yourself. Everything from here down (Pass 1 through Finish) is the cleaner's
+job, or yours only when the diff was small enough to clean in place — not a
+checklist for the dispatcher to repeat after the fact.
+
+## One verification per cleanup
+
+Whoever edited runs the profile's full verification exactly once, at Finish,
+and appends the result line to the ledger's `## Verification`, marked full. The
+report lists every command that was run with its result — the build, any
+scoped tests, the full command — and each of those is done.
+
+The dispatcher runs none of them again. Not the build "to be sure", not the
+scoped tests "because they are cheap", not the full command "to see it with my
+own eyes": the ledger line is this session's evidence, the same line
+`flow-test` would have written, and repeating the run proves nothing the line
+did not while doubling the most expensive step of the stage. The only command
+that belongs after the report is the full one, and only when the report shows
+it never ran — and even then none of the scoped ones the report lists.
 
 ## Pass 1 — the code
 
@@ -56,45 +107,32 @@ reason the split exists.
 
 ## Pass 2 — the tests
 
-One rule decides every case:
+Run the `anti-slop-tests` skill on the same diff — it ships in this bundle
+alongside `anti-slop-code`, so when installed as a plugin it is listed under the
+bundle's prefix. It owns the rule of value (a test earns its place if it would
+fail when a plausible bug is introduced into the behaviour it names), the
+falsification probe that settles an arguable case by measurement, the catalogue
+of forms, and the delete-vs-rewrite split. Do not restate its rules here or
+improvise a lighter version — invoke it.
 
-> **A test earns its place if it would fail when a plausible bug is introduced
-> into the behaviour it names.**
+Two of its four verdicts come back to you rather than landing as edits:
 
-Apply it by naming the bug out loud. If no bug you can describe would turn this
-test red, it is not testing anything — it is describing the implementation back
-to itself, and it will need updating every time the implementation moves.
+- Everything it **flags** — a coverage gap the deletion exposed, a green test
+  asserting wrong behaviour, a flaky or skipped test — becomes a finding for the
+  ledger, exactly as with Pass 1's behavioural flags.
+- Its **rewrites** are the pass's real risk. A rewrite is a code edit wearing a
+  cleanup's clothes, so it is covered by the re-run below like any other.
 
-**Delete:**
+The one rule worth repeating here because it is the one most easily skipped
+under time pressure: a badly written test that is nevertheless the only coverage
+of a real branch gets **rewritten, not deleted**. Deletion is correct when the
+behaviour is covered elsewhere or was never worth covering; it is not correct
+when it is the last thing standing between a branch and silence.
 
-- Assertions on incidental output: log lines, the wording of a message, the
-  order of fields in a serialisation nobody parses.
-- Restatements of the implementation: a mock is told to return `X` and the test
-  asserts `X` came back; a call is verified with the arguments the test itself
-  just passed in.
-- Tests of the language, the framework, or a library: that a constructor assigns
-  the fields you gave it, that a getter returns its field, that the standard
-  library works.
-- Duplicate rows in a table test that walk the same branch with different data.
-  Distinct data through one path is one case, not five.
-- Tests pinned to an internal detail when the same behaviour is already covered
-  through the public entry point.
-
-**Keep, and strengthen:**
-
-- Contracts other code depends on — the module's observable behaviour.
-- Error branches, especially the ones that are awkward to trigger. Those are
-  exactly the paths nobody exercises by hand.
-- Boundaries: empty, zero, one, maximum, expired, malformed, concurrent.
-- Round trips: persistence, serialisation, backward compatibility with data that
-  already exists.
-- Regressions with a history. A test that exists because something once broke
-  earns its place permanently; make sure its name says what it protects.
-
-**The case that needs care** is a badly written test that is nevertheless the
-only coverage of a real branch. Rewrite it — do not delete it. Deletion is
-correct when the behaviour is covered elsewhere or was never worth covering; it
-is not correct when it is the last thing standing between a branch and silence.
+Tests that the ledger's findings name as a verdict's regression are the easy
+case: they were red before their fix and green after, so they satisfy the rule
+of value by construction. Keep them, and read the ledger before the pass so you
+know which ones they are.
 
 ## Also in scope
 
@@ -108,8 +146,16 @@ is not correct when it is the last thing standing between a branch and silence.
 
 ## Finish
 
-Re-run the full verification. Cleanup is the stage most likely to break
-something quietly, precisely because deletion feels safe.
+*(This is the cleaner's step — see "Run it at arm's length" above. If you are
+the dispatcher reading this after the cleaner reported back, you already have
+its verification line; do not run this again.)*
 
-Then report as one list: what was removed and why, with anything you flagged
-rather than touched kept visibly separate.
+Run the profile's full verification once — build and lint too, where they are
+separate commands — and append the line to the ledger's `## Verification`,
+marked full. Cleanup is the stage most likely to break something quietly,
+precisely because deletion feels safe, and this run is the only reader after
+it.
+
+Then report as one list: the commands you ran with their results, what was
+removed and why, and anything you flagged rather than touched kept visibly
+separate.

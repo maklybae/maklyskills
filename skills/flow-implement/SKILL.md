@@ -75,9 +75,19 @@ Writing them now only to delete them in an hour is wasted work on both ends.
 
 So: no comment that a better name would make unnecessary — try the name first,
 and the need usually disappears. No doc-header on a symbol just because it is
-exported. No test whose failure would tell you nothing. The full doctrine lives
-in the `anti-slop-code` skill; the short version is that every line you add
-should be one a reviewer would miss if it were gone.
+exported. The full doctrine lives in the `anti-slop-code` skill; the short
+version is that every line you add should be one a reviewer would miss if it
+were gone.
+
+The same economy governs step 3 of the loop. Write the test for the behaviour
+the stage introduces, then ask what bug it would catch — if you cannot name one,
+you have written a test that pins the implementation rather than protecting it,
+and cleanup will delete it. The failure mode to avoid is writing one test per
+exported symbol: that is coverage of the *surface*, and it is how a change
+arrives with thirty tests and two of them load-bearing. Cover the branches that
+can actually go wrong — errors, boundaries, round trips — and let the rest go
+untested rather than tested emptily. `anti-slop-tests` holds the full catalogue
+of what not to write.
 
 ## Scope
 

@@ -1,0 +1,38 @@
+{
+  "skill_name": "anti-slop-tests",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "An agent generated this manager_test.go for me and I'm sure most of it is worthless. Prune it — delete what isn't earning its place and tell me what's left.",
+      "expected_output": "Deleted: TestNewManager (asserts that assignment assigns), TestManager_Save (AssertExpectations is the only assertion — an interaction check with no state assertion), TestManager_Delete (no assertion at all; passes unless something panics). Rewritten rather than deleted: TestManager_GetUser, whose six per-field assertions echo values a double was told to return — it becomes one structural comparison of a value the manager actually derives, or is deleted only after confirming the manager transforms nothing; TestManager_Validate, whose EqualError on the wrapped message is replaced by errors.Is against a sentinel; TestManager_Normalize, whose reflect.DeepEqual becomes cmp.Diff. TestManager_Rate loses three of its four table rows: all four expect 100 and walk the same branch. Flagged, not edited: TestManager_Sync (time.Sleep as synchronisation — a flake, and a finding rather than a cleanup item), TestManager_Legacy (skipped for an undocumented reason). The report states the test count before and after and lists any coverage gap the deletions exposed.",
+      "files": ["inputs/manager_test.go"],
+      "assertions": [
+        "TestNewManager deleted as a constructor tautology",
+        "TestManager_Save deleted or rewritten — AssertExpectations alone is not a state assertion",
+        "TestManager_Delete deleted — it asserts nothing",
+        "The per-field assertion run in TestManager_GetUser is collapsed to one structural comparison, not left as six",
+        "EqualError on a wrapped message replaced by errors.Is against a sentinel",
+        "reflect.DeepEqual replaced by cmp.Diff",
+        "Duplicate table rows in TestManager_Rate reduced — they all expect 100",
+        "TestManager_Sync FLAGGED for the sleep, not silently deleted or given a longer sleep",
+        "TestManager_Legacy FLAGGED as skipped, not deleted silently",
+        "testify is still the assertion library — the suite is not rewritten into a foreign style",
+        "Report states the test count before and after"
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Same treatment for allowlist_test.go please — strip out the tests that aren't pulling their weight.",
+      "expected_output": "Almost nothing is deleted, and the pass says so plainly rather than manufacturing churn. Every test here names a bug that would turn it red: exact-host matching, the suffix lookalike, the empty allowlist, trailing-dot normalisation, the punycode bypass, the malformed-host error branch, and the round trip. TestAuditRecordWrittenOnRejection asserts an interaction, but the interaction IS the contract — the audit record is observable behaviour a user depends on — so it is a carve-out, not mock echo. A correct response may suggest naming improvements or note that TestResolveReturnsErrorForMalformedHost would be stronger asserting a sentinel with errors.Is rather than bare Error, but it does not delete tests to look productive. The report states that the count did not change.",
+      "files": ["inputs/allowlist_test.go"],
+      "assertions": [
+        "No test is deleted, or at most the response argues one case explicitly and correctly",
+        "TestAuditRecordWrittenOnRejection is KEPT — the interaction is the contract, not mock echo",
+        "Boundary and error-branch tests (empty allowlist, malformed host, punycode) are kept",
+        "The round-trip test is kept",
+        "The response does not consolidate the clear separate tests into a table or a shared helper (tests are DAMP, not DRY)",
+        "The response states plainly that little or nothing was slop rather than inventing deletions"
+      ]
+    }
+  ]
+}

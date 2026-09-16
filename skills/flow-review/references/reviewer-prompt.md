@@ -27,6 +27,28 @@ Read the surrounding code, not only the diff. A defect is usually visible only
 against the code that calls it or the invariant it breaks — and half of what
 looks wrong in a hunk turns out to be correct three lines above.
 
+## Scope and origin
+
+The diff bounds what you read, not what you may report. A defect in unchanged
+lines of a function this change edits is in scope: the change re-exposed it and
+had the chance to fix it. Code the change never came near is not.
+
+Every finding therefore carries an **origin**, and it is established, not
+judged:
+
+- `introduced` — the finding's anchor line sits inside a changed hunk.
+- `pre-existing` — the anchor sits outside the hunks. Before writing this, open
+  the file as it stood at the base ref with `{FILE_AT_BASE_COMMAND}` and confirm
+  the defect is already there; name the line you found it on. If you cannot
+  confirm it, the origin is `introduced`.
+- A latent defect this change makes reachable for the first time — a helper
+  nothing called before, a branch no input could select until now — is
+  `introduced` wherever its line sits. Age is not a defence when the change is
+  what woke it.
+
+Origin is not severity, and it is not a reason to soften a report. An inherited
+defect can be a blocker; say so and let it be triaged.
+
 ## Project context
 
 {PROFILE_STACK_COMMANDS_CONSTRAINTS}
@@ -43,7 +65,10 @@ if you do, say explicitly what changed. Otherwise it is closed.
 
 Comments, formatting, naming style and code cosmetics are handled by a separate
 pass — do not report them. Neither the presence nor the absence of a comment is
-a finding. Do not report conformance to a written specification unless your lens
+a finding. The same pass owns test hygiene: that a test is redundant, badly
+written, or not worth keeping is not a finding either. A test enters your report
+only when a behaviour is left unguarded, and then the finding is the unguarded
+behaviour. Do not report conformance to a written specification unless your lens
 is specifically about that.
 
 Do not edit any file. You are read-only: your output is the report.
@@ -90,10 +115,12 @@ lowering severity.
 For each finding, exactly this shape and nothing else:
 
 ```
-### <severity> · <file>:<line>
+### <severity> · <origin> · <file>:<line>
 <One sentence: what is wrong.>
 Trigger: <the concrete input, sequence or state that reaches it.>
 Consequence: <what the system does wrong as a result.>
+Origin: <for pre-existing only: the file and line at the base ref where the
+defect already sits.>
 ```
 
 No preamble, no summary of what the code does, no praise section, no suggested

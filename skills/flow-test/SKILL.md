@@ -21,7 +21,9 @@ as you like. Fast feedback is what keeps a mistake one edit old instead of ten.
 **Broad before declaring done.** Once, at the end, run what the profile's
 `## Commands` calls the full verification — plus lint and build if they are
 separate. Scoped runs miss exactly the failures that matter most: the ones your
-change caused somewhere you were not looking.
+change caused somewhere you were not looking. Once means once: when the
+ledger's last full line is newer than the last edit, it stands, whoever ran it,
+and running it again is not diligence.
 
 Where the language has a race detector or equivalent sanitiser, use it — **in
 the scoped runs too, not only the final one**. A race caught at the stage that
@@ -39,6 +41,13 @@ and what came back — counts, not adjectives.
 This is not ceremony. The failure mode it prevents is specific and common: code
 is changed, the change looks obviously right, the claim is made, and the suite
 was never run because the last run was four edits ago.
+
+Output produced by a subagent this task dispatched — the cleaner at its Finish,
+a reviewer running a probe — and recorded in the ledger's `## Verification`
+with its command and result is this session's output. Read the line; do not run
+the command again to see it with your own eyes. Whether a run stands is decided
+by whether it is newer than the last edit, not by who ran it, and repeating a
+run that stands proves nothing the line did not.
 
 ## Diagnosing a failure
 
@@ -61,14 +70,21 @@ same one line proves or disproves it. If it really is pre-existing, note it in
 the ledger and leave it alone; fixing it silently inside this change makes the
 diff harder to review.
 
+**A test green in the last full run and red now is yours.** That is the same
+claim in the other direction, and it needs the same evidence before it can be
+called unrelated. It matters most under repair, where a regression explained
+away as flakiness is a defect the suite had already caught once.
+
 ## Record it
 
 Append to `## Verification` in the ledger —
 `~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`, schema
 in `../flow/references/ledger.md` relative to this skill's directory — the date,
-the exact command, and the result.
+the exact command, and the result, and mark the full runs as full.
 Later stages and review subagents read those lines to know what has actually
-been proven, and a stale one is worse than none.
+been proven, and a stale one is worse than none. The last full line does
+double duty: it is the baseline a later fix is measured against, which a scoped
+run cannot be — it is green in exactly the places nobody changed.
 
 ## Not in this stage
 
