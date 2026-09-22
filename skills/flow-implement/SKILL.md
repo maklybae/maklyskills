@@ -27,18 +27,22 @@ the shape you can guess from the signature.
 
 ## When there is no plan
 
-The description admits tasks small enough to skip planning. Small does not
+On the mechanical and contained routes there is no plan file. Small does not
 suspend the loop — it collapses the plan to a single stage you write yourself
 before touching code: the files you will change, the model file to imitate, the
-verify command from the profile. Say those three lines to the user first; that
-is the plan gate, at the price this task deserves. If you cannot fill the three
-slots without going searching, the task was not small — run flow-explore and
-flow-plan instead of discovering that mid-edit.
+verify command from the profile. Say those three lines to the user first, right
+after the route line; that is the plan gate, at the price this task deserves.
+On the mechanical route the two collapse into one — the files are the ones the
+parameter passes through, and the model is the neighbour that already does the
+same thing. If you cannot fill the three slots without going searching, the
+task was not small — move the route up and run flow-explore and flow-plan
+instead of discovering that mid-edit.
 
-The ledger follows the same economy. Create it the moment the work produces
-anything a later stage or session will need — a decision, a finding, a review
-round ahead — and skip it, saying so, for a mechanical edit that nothing will
-ever resume. The umbrella skill's skipping rule applies unchanged.
+The ledger follows the same economy. The umbrella skill's sizing rule says when
+it exists: never on the mechanical route, from the first review round on the
+contained route, from explore on the feature route. Create it earlier only when
+the work produces something a later session will need — a decision worth
+recording, a finding — and say so.
 
 ## The per-stage loop
 

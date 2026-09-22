@@ -20,6 +20,12 @@ The stage is finished when you can name **the files you would touch** and **the
 existing code you would imitate**. Not when you understand the subsystem — you
 never fully will, and trying is how exploration runs forever.
 
+This is the feature route's first stage. A mechanical or contained change — the
+umbrella skill's sizing rule — does not come here: reading the function you are
+about to edit is not exploration, and a brief for it is ceremony. Come here when
+the route is feature, or when `flow-implement`'s three-line plan cannot be
+filled without searching, which is the sign the sizing was wrong.
+
 ## Three sources, in order of value
 
 **1. The codebase's own answer.** Almost every task in a mature repository has a

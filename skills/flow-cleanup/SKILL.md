@@ -24,7 +24,10 @@ under "cleanup" is how a tidy-up ships a bug.
 
 ## When it runs
 
-Twice at most per task, and never between review rounds.
+By route, and never between review rounds. On the feature route, twice at
+most. On the contained route, once, in place, before the review. On the
+mechanical route, not as a stage at all: the doctrine applies while writing,
+and reading the diff once before calling it done is the whole pass.
 
 The full pass is stage 5: after `flow-test` has gone green and before the first
 review. Reviewers then read a diff without the comments that argue for the
@@ -53,8 +56,10 @@ long task the context doing the deleting is also the most expensive one to
 spend. A fresh reader owes the diff nothing.
 
 Dispatch when the diff is large enough for a fresh context to pay for itself:
-as a default, more than roughly 200 changed lines or more than five files.
-Below that, or when subagents are unavailable, do the two passes yourself,
+as a default, more than roughly 200 changed lines or more than five files, and
+only on the feature route — a contained-route change is cleaned in place by
+definition. Below that, or when subagents are unavailable, do the two passes
+yourself,
 applying anti-slop-code and anti-slop-tests literally rather than a lighter
 version from memory — a dispatched cleaner costs a context and a full
 verification, and on a small diff that outweighs the author's blind spot.

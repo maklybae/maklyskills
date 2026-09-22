@@ -42,12 +42,24 @@ Three consumers, none of whom share your context:
 Anything that does not serve one of those three does not belong in the file.
 It is a ledger, not a diary: no narration of what you did, no restating the diff.
 
+## When it exists
+
+The first stage that produces something one of those three consumers needs
+creates it. On the feature route that is `flow-explore`, with the brief. On the
+contained route it is the first review round, which needs somewhere to put
+findings the next round must not raise again; `## Task` is then written from
+the route line and the three-line plan that opened the work, and
+`## Verification` from the runs already made in this session. A mechanical
+change never has one: nothing about it will be resumed, reviewed or handed to a
+subagent, and a ledger for it is a file nobody will read.
+
 ## Schema
 
 ```markdown
 # Add vector index to document events
 
 - slug: add-vector-index
+- route: feature   # contained gets a ledger at the first review; mechanical never has one
 - stage: review (round 2)
 - mode: unattended, ends at commit, budget: 5 rounds  # omit when interactive; budget only when the user set one
 - branch: feature/vector-index

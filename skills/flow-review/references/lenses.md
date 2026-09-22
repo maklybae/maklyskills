@@ -112,8 +112,14 @@ regulated behaviour, a cross-team agreement.
 
 ## Choosing the set
 
-Five lenses is the default and fits most changes. Adjust by what the change
-actually is, not by its size:
+Five lenses is the default for a feature. A contained-route change — the
+umbrella skill's sizing rule — gets two or three: correctness and integration
+always, tests when the change brought tests with it, security when an escalator
+put it on this route. Five independent readers on thirty lines read the same
+thirty lines five times, and the fourth and fifth reports are the first two in
+other words. Size alone never sets the count; the route does, and the
+escalators are what move a small change up. Beyond that, adjust by what the
+change actually is:
 
 - Code the profile marks **core** earns the lenses its risk implies rather than
   the default five — data-format compatibility wherever state persists,
