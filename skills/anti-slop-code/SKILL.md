@@ -3,9 +3,10 @@ name: anti-slop-code
 description: >-
   Detect and clean "AI slop" from code — the verbose, over-commented,
   over-engineered, cosmetically-polished patterns that language models tend to
-  emit. Enforces a strict comment policy: zero comments by default, a hard
-  one-line cap, and no doc-comments on public/exported symbols unless explicitly
-  authorized. Use this skill whenever the user asks to de-slop, clean up,
+  emit. Enforces a zero-comment policy: every human-readable comment is deleted,
+  its information moved into a name, a test, docs or the report; only tooling
+  directives survive, plus one-line invariants on paths the project profile
+  explicitly allows. Use this skill whenever the user asks to de-slop, clean up,
   tighten, or humanize a chunk of code; whenever they say a piece of code looks
   "AI-generated", "too verbose", "over-commented", "over-engineered", or has
   "too many comments / needless abstraction / defensive junk"; whenever they
@@ -48,8 +49,8 @@ codebase* would have written: no more, no less.
    structure. Never import a "best practice" that fights the local environment.
    The one convention that does **not** get this deference is comment density:
    a file full of doc-headers does not license you to keep them. Local habit
-   loses to the comment doctrine below; the only exception is the published-API
-   permission spelled out there.
+   loses to the comment doctrine below; the only exception is a path the
+   project profile allows, spelled out there.
 
 3. **Clean the stylistic; flag the behavioral.** Stylistic slop (comments,
    names, dead abstractions, cosmetics) you clean directly. Anything that could
@@ -76,13 +77,16 @@ codebase* would have written: no more, no less.
 
 1. **Scope.** Establish what to clean: the pasted snippet, named files, or a diff
    (`git diff`, branch-vs-main). If the user is de-slopping recent work,
-   prefer the diff — clean what changed, not the whole tree.
+   prefer the diff — clean what changed, not the whole tree. If the project
+   root has `.claude/flow-profile.md`, read its `## Comments` section: the
+   paths listed there are the only place a comment may survive.
 
 2. **Pre-scan.** Run the deterministic scanner to get cheap, high-recall
-   candidates before reading:
+   candidates before reading, passing each allowed path from the profile:
    ```
    python3 scripts/scan_slop.py <files-or-dir>
    git diff --name-only | python3 scripts/scan_slop.py --stdin-list
+   python3 scripts/scan_slop.py <files-or-dir> --allow-invariants <path>
    ```
    Treat every hit as a *candidate*, never a verdict. The scanner is blind to
    over-abstraction, wrong abstractions, and happy-path logic — those only come
@@ -108,69 +112,69 @@ This is the strictest part of the pass and the highest-yield. Comments are the
 most common slop tell, and unlike code, a wrong call here is cheap to reverse —
 which is exactly why the bar is set where it is.
 
-### Default: zero
+### Zero
 
-**Code is self-documenting. Names and types carry the meaning.** A comment is an
-admission that the code failed to explain itself; the first fix to try is always
-a better name, a named constant, or a type — not a comment. A comment earns its
-place only when the information genuinely cannot live in the code.
+**Code is self-documenting. Names and types carry the meaning.** The cleaned
+scope contains no human-readable comments: no restatement, no doc-header, no
+one-line why above the guard it explains. A comment is an admission that the
+code failed to explain itself, and the fix is a better name, a named constant, a
+type, a test or a page in `docs/` — never the comment.
 
-### Hard cap: one line
+This holds for public and private symbols alike, for tests, and for whatever
+else the scope touches that takes comments (config, SQL, proto, shell). It holds
+for a why that is genuinely non-obvious — that is the case the rule exists for:
+the comment a model is most confident about is the one that rots quietly when
+the code under it changes, and no reviewer diffs it.
 
-**Two or more consecutive human-readable comment lines is a defect.** Not a
-preference, not a smell — a thing to fix before you hand the code back. Condense
-to one line, or move the detail to `docs/` and leave a one-line pointer.
+### What survives
 
-The reasoning: a comment that outgrows one line has stopped being a pointer and
-started being prose. Prose in source drifts out of sync with the code beside it
-faster than anything else in the file, and no reviewer diffs it. If the
-explanation truly needs a paragraph, the paragraph belongs somewhere a reader
-will find it deliberately.
+Two things, and nothing else.
 
-The cap holds **even when every line is individually a legitimate why.** A
-five-line block of genuine rationale is still a five-line block: pick the load-
-bearing sentence, keep that, drop the rest.
+1. **Directives the tooling reads**, left byte-for-byte: build tags and compiler
+   pragmas (`//go:build`, `//go:embed`, `//go:generate`), linter and
+   type-checker switches (`# type: ignore`, `# noqa`, `/* eslint-disable */`,
+   `// @ts-expect-error`), `Deprecated:` markers, Go example `// Output:`
+   blocks, license/SPDX headers and `Code generated ... DO NOT EDIT.` banners.
+   Deleting one changes the build, not the prose.
+2. **One-line invariants on paths the project allows.** The `## Comments`
+   section of `.claude/flow-profile.md` may list paths — typically low-level
+   code whose correctness lives in call order, lock order or deviations from a
+   spec, none of which has a name. There, and only there, a comment stays when
+   deleting it would let a plausible edit break the code silently. It is one
+   line, sits on the line it guards, and is English and stateless. Everything
+   else on those paths is cleaned like anywhere else.
 
-The only exemption is blocks that are multi-line **by machine mandate**, which
-you leave byte-for-byte intact:
-- license / copyright / SPDX headers
-- `Code generated by ... DO NOT EDIT.` banners
-- build tags and pragmas (`//go:build`, `# type: ignore`, `/* eslint-disable */`)
+No section, no listed path, or no profile at all: zero.
 
 ### Public symbols get no doc-comment
 
-**A doc-header on an exported or public symbol — type, interface, func, method,
-class, module — is banned by default.** `// NewPaymentManager creates a new
-PaymentManager.` is the canonical example: it is the signature, retyped.
+A doc-header on an exported symbol is the comment a model writes most often, and
+it goes like any other. `// NewPaymentManager creates a new PaymentManager.` is
+the signature retyped; what a caller needs is a name that says what it does.
 
-Being public is not itself a reason to document. The reason a symbol is public
-is that other code calls it; what those callers need is a name that says what it
-does, which the doc-header is quietly substituting for.
+The only authorization is **the human asking for it in this session** — "keep
+the godoc", "document the public API". Nothing else authorizes one. Not a
+linter or a language convention: when Go's "exported symbols should have a
+comment", `pydocstyle` or ESLint's `require-jsdoc` fires on a self-explanatory
+name, the linter is wrong. Not a package that is already documented either:
+local habit does not license the next doc-header.
 
-Exactly two things authorize a public doc-comment:
-1. **The human asked for it in this session** — "keep the godoc", "document the
-   public API", or similar.
-2. **The module is a published library whose public surface is already
-   consistently documented.** You are matching an established external contract,
-   not starting one. A single stray doc-header elsewhere in the file is not this.
+### Move the information, then delete
 
-A linter or a language convention is explicitly **not** authorization. Go's
-"exported symbols should have a comment", `pydocstyle`, ESLint's `require-jsdoc`
-— when these fire on a self-explanatory name, the linter is wrong and the
-one-line cap still applies to whatever you keep.
+Zero is safe only because deleting a comment does not have to mean losing what
+it said. Before you cut a comment that carries something real — a unit, an
+external contract, a reason — find it a home, in this order:
 
-### Relocate the why; don't just drop it
-
-The strictness above is safe only because deleting a doc-header does not have to
-mean losing its information. Before you cut, ask where the why actually belongs:
-
-- **Into a name or type.** A comment explaining that a number is in cents is
-  answered by `amountCents int64`. Once the name says it, the comment is
-  restatement — delete it outright.
-- **Down to the line that enforces it.** A rationale attached to a public
-  function usually belongs at the single guard or branch it explains, where a
-  reader meets it in context and where it cannot silently stop being true.
-- **Out to `docs/`.** For anything that genuinely needs a paragraph.
+- **A name or type.** A comment saying a number is in cents is answered by
+  `amountCents int64`. A rename is stylistic; do it.
+- **A test name.** A rule the code enforces belongs in the name of the test that
+  pins it: `TestPay_RejectsNonPositiveAmount_GatewayTreatsItAsRefund`. Rename an
+  existing test; do not write a new one here — a missing test is a finding.
+- **`docs/`.** When the repository already documents this component and the
+  reason needs a paragraph.
+- **The report.** Otherwise list it under *Relocate* — file, the line it
+  explained, the text — so the author carries it into the commit message, the
+  PR description or docs. That is where the why of a change belongs anyway.
 
 ```go
 // Pay charges the account for an order. It rejects non-positive amounts
@@ -182,15 +186,17 @@ func (m *OrderManager) Pay(ctx context.Context, accountID string, amountCents in
 ```
 ```go
 func (m *OrderManager) Pay(ctx context.Context, accountID string, amountCents int64) (string, error) {
-	// the gateway treats non-positive amounts as full refunds
 	if amountCents <= 0 {
 		return "", ErrInvalidAmount
 	}
 ```
-The first sentence was the signature retyped. The second was real, non-obvious,
-external behavior — so it survives, as one line, at the guard that exists
-because of it. Net: two lines of public doc-header become one line of load-
-bearing context. That is the shape of a correct fix.
+The first sentence was the signature retyped: deleted, nothing to move. The
+second is real external behavior: it goes into the name of the test that covers
+the guard, or — with no such test — onto the report's *Relocate* list. It does
+not stay in the file.
+
+Never change behavior to carry a why. Rewording an error string or a log line so
+it holds the explanation is a behavior change, not a relocation.
 
 ### Delete outright
 
@@ -206,34 +212,31 @@ A comment that does any of these carries nothing worth relocating:
   unverified metric (`// 50% faster`) with no benchmark or mechanism behind it.
 - Is a section banner (`######## INITIALIZATION ########`).
 - Exists only to satisfy a convention or a linter.
+- Is a TODO. A real one goes to the tracker or the ledger; the rest never
+  happens.
 
-### Keep only these
+### When a comment does stay
 
-- A non-obvious **why**: a business reason, a deliberate trade-off, the rationale
-  for a workaround, stated in one line at the point it applies.
-- An **invariant or precondition** a reader could violate without knowing it —
-  and only if a name or type cannot carry it instead.
-- A **contract with an external system** whose behavior is not visible here.
-- A **functional marker the tooling reads** (`// Deprecated:`, `//go:embed`,
-  build tags, `# type: ignore`).
-
-Two hard rules on anything you keep or write:
+On an allowed path, or because the human asked for it in this session:
+- **One line.** Two or more consecutive human-readable lines is a defect even
+  when every line is a legitimate why: keep the load-bearing sentence, move the
+  rest.
 - **English only.** Rewrite non-English comments into English.
 - **Stateless.** A comment states what *is*, never how the code got here. Strip
   "previously", "now that", "changed from", "fixes #123", "regression test for",
-  ticket keys, PR references. History lives in version control. A ticket
-  reference survives only as a supplement to a real contract description, never
-  as the whole explanation.
+  ticket keys, PR references. History lives in version control.
 
-### The pass is net-negative on comments
+### The pass ends at zero
 
-A de-slop pass that ends with more comment lines than it started has failed,
-without exception. Relocating a why is a *move*, and it shrinks: two lines up
-top become one line inside. If you find yourself adding a comment to explain a
-deletion, delete the comment instead — the diff already explains it.
+Outside allowed paths the pass ends with zero human-readable comment lines in
+its scope. Anything left is named in the report with the reason it survived —
+an allowed path, or the human's request in this session. A pass that ends with
+more comment lines than it started has failed, without exception; if you find
+yourself adding a comment to explain a deletion, delete it — the diff already
+explains it.
 
-Before reporting, count: comment lines in, comment lines out. The report states
-both.
+Before reporting, count: comment lines in, comment lines out. The scanner
+prints the number; the report states both.
 
 ## The slop catalog (summary)
 
@@ -269,8 +272,8 @@ Read it before a serious pass; the summary below is the map.
 
 | Clean directly (stylistic, behavior-preserving) | Flag for human (behavior-changing) |
 |---|---|
-| Any comment run over one line; public doc-headers | Hallucinated or wrong-ecosystem imports |
-| Restating/narrating/hollow comments; trivial docstrings | Missing timeout / validation / retry backoff |
+| Every human-readable comment and docstring; directives stay | Hallucinated or wrong-ecosystem imports |
+| A comment's real content moved into a name or test name | Missing timeout / validation / retry backoff |
 | Content-free / inconsistent names | Swallowed exception that hides a real failure |
 | Single-use helpers, dead abstraction layers | Hardcoded secrets / credentials |
 | Redundant guards on guaranteed paths | SQL built by string concatenation |
@@ -285,7 +288,8 @@ line, prefer flagging over silently cutting.
 
 ## Report format
 
-Keep the report tight. A one-line comment ledger, then two sections:
+Keep the report tight. A one-line comment ledger, then up to four sections;
+omit an empty one:
 
 ```
 Comments: <N> lines → <M> lines (<M-N>)
@@ -293,12 +297,19 @@ Comments: <N> lines → <M> lines (<M-N>)
 ## Cleaned
 - <file>:<line> — <what was slop> → <what it is now> (one line each; group trivial ones)
 
+## Relocate (information the deleted comments carried)
+- <file>:<line> — "<the why, one sentence>" → suggested home: commit message | PR description | docs/<page>
+
+## Surviving comments
+- <file>:<line> — allowed path `<path>` | asked for in this session
+
 ## Flagged for review (behavior — not changed)
 - <file>:<line> — <the concern>, why it matters, suggested direction
 ```
 
 The ledger exists because it is the one number that cannot be fudged by
-narration, and it must not go up. If nothing was slop, say so plainly rather
+narration: it must not go up, and outside allowed paths `M` is zero, with every
+surviving line accounted for below it. If nothing was slop, say so plainly rather
 than inventing edits — a clean pass that changes nothing is a valid and honest
 outcome. Do not manufacture churn to look busy; that is itself a form of slop.
 
@@ -311,10 +322,11 @@ comment doctrine. Before you flag or cut, check against
 - Role-suffixed domain types and the codebase's established vocabulary.
 - Defensive code and detailed logging in critical or externally-facing paths.
 - An abstraction that really does have multiple call sites or implementations.
-- Machine-mandated comment blocks: license/SPDX, generated-file banners, build
-  tags. These are the one carve-out that survives on the comment side.
+- Directives: license/SPDX, generated-file banners, build tags, pragmas, linter
+  switches. These are the carve-out that survives on the comment side, with the
+  profile's allowed paths as the only other one.
 
 When you're not sure whether a piece of *logic* is deliberate, leave it and note
 it. The skill's job is to make the code look like a careful human wrote it — and
-a careful human deletes every comment they can, and none of the code they don't
-understand.
+a careful human leaves no comments behind, and deletes none of the code they
+don't understand.

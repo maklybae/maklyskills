@@ -73,15 +73,18 @@ change is how a reviewable diff becomes an unreviewable one.
 
 ## Write it the way it will survive cleanup
 
-`flow-cleanup` strips comments that restate the code, doc-headers that re-type
-a signature, and tests that assert a mock returned what it was told to return.
-Writing them now only to delete them in an hour is wasted work on both ends.
+`flow-cleanup` strips every comment, and tests that assert a mock returned what
+it was told to return. Writing them now only to delete them in an hour is
+wasted work on both ends.
 
-So: no comment that a better name would make unnecessary — try the name first,
-and the need usually disappears. No doc-header on a symbol just because it is
-exported. The full doctrine lives in the `anti-slop-code` skill; the short
-version is that every line you add should be one a reviewer would miss if it
-were gone.
+So: write no comments. Not a doc-header, not a one-line why above a guard, not
+a TODO. What you would have put in one goes into a name, a type, the name of
+the test that pins the rule, or the ledger — the ledger's reasons become the
+commit message and the PR description, which is where the why of a change is
+read. The only comments that belong in code are directives the tooling reads
+and, on paths the profile's `## Comments` section lists, a one-line invariant.
+The full doctrine lives in the `anti-slop-code` skill; the short version is that
+every line you add should be one a reviewer would miss if it were gone.
 
 The same economy governs step 3 of the loop. Write the test for the behaviour
 the stage introduces, then ask what bug it would catch — if you cannot name one,

@@ -78,7 +78,8 @@ running all night.
 **`<project-root>/.claude/flow-profile.md`** — per repository. Build, test, lint
 and codegen commands, VCS and base ref, how critical the code is and what this
 repository accepts trading away, whether specs are expected, which rule files
-bind, which traps to avoid. Written by `flow-setup` after it has watched
+bind, which paths may keep a one-line invariant comment (everywhere else the
+count is zero), which traps to avoid. Written by `flow-setup` after it has watched
 the commands succeed. This is the only file the pipeline puts in the repository,
 because it is about the repository; it stays untracked unless you decide
 otherwise, and the skills never touch your ignore files.

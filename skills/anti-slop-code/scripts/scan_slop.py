@@ -7,11 +7,18 @@ language-agnostic: it works on comment text and raw source patterns that hold
 across languages, and deliberately stays silent on things that need semantic
 understanding (over-abstraction, wrong abstractions, happy-path logic).
 
+The comment policy is zero: every human-readable comment line, trailing comment
+and docstring is a signal. Directives the tooling reads are exempt. Under a path
+passed with --allow-invariants one comment line may stay; longer runs are still
+signalled. Prose files (Markdown, reStructuredText, plain text) are not checked
+for comments.
+
 Usage:
     python3 scan_slop.py FILE [FILE ...]
     python3 scan_slop.py DIR              # walks, skipping vendor/.git/etc.
     git diff --name-only | python3 scan_slop.py --stdin-list
     python3 scan_slop.py FILE --json
+    python3 scan_slop.py DIR --allow-invariants PATH [--allow-invariants PATH ...]
 """
 
 import json
@@ -64,24 +71,55 @@ BLOCK_MARK = re.compile(r"/\*+|\*/|<!--|-->|\"\"\"|'''")
 # JSDoc continuation line; the required space keeps C dereferences (*ptr) out.
 BLOCK_CONT = re.compile(r"^\s*\*(?!/)\s+(.*)$")
 
-COMMENT_LINE_START = re.compile(r"^(//|#|--|;|\*|/\*|\*/|\"\"\"|'''|<!--|-->)")
+PROSE_EXT = {".md", ".markdown", ".mdx", ".txt", ".rst", ".adoc"}
+SLASH_EXT = {
+    ".go", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".rs", ".java", ".kt", ".kts",
+    ".scala", ".swift", ".c", ".h", ".cc", ".cpp", ".hpp", ".cs", ".proto", ".dart",
+    ".php", ".svelte", ".vue",
+}
+HASH_EXT = {
+    ".py", ".sh", ".bash", ".zsh", ".rb", ".yaml", ".yml", ".toml", ".pl", ".r",
+    ".cfg", ".conf", ".ini", ".mk", ".tf",
+}
+HASH_FILES = {"Makefile", "makefile", "GNUmakefile", "ya.make", "Dockerfile"}
+DASH_EXT = {".sql", ".lua", ".hs"}
+BLOCK_ONLY_EXT = {".css", ".scss", ".less", ".html", ".xml"}
+
+LINE_START = {
+    "slash": re.compile(r"^(?://|/\*|\*/|\*(?:\s|$)|<!--|-->)"),
+    "hash": re.compile(r"^#(?![\[!])"),
+    "dash": re.compile(r"^(?:--(?=\s|$)|/\*|\*/|\*(?:\s|$))"),
+    "block": re.compile(r"^(?:/\*|\*/|\*(?:\s|$)|<!--|-->)"),
+    "generic": re.compile(r"^(?://|#(?![\[!])|--(?=\s|$)|;|/\*|\*/|\*(?:\s|$)|<!--|-->)"),
+}
+TRAILING = {
+    "slash": re.compile(r"(?<=\s)//"),
+    "hash": re.compile(r"(?<=\s)#(?=\s|$)"),
+    "dash": re.compile(r"(?<=\s)--(?=\s|$)"),
+}
+
 CPP_DIRECTIVE = re.compile(
     r"^#\s*(include|define|ifn?def|ifdef|endif|pragma|if|else|elif|undef|error|line|import)\b"
 )
 
-# One human-readable comment line is the cap; anything longer is a defect.
-MAX_COMMENT_RUN = 1
-
-# Blocks that are multi-line by mandate are exempt from the cap.
 LICENSE_MARK = re.compile(
     r"SPDX-License-Identifier|copyright|licen[cs]ed under|all rights reserved|"
     r"code generated|do not edit|@generated",
     re.IGNORECASE,
 )
 DIRECTIVE_COMMENT = re.compile(
-    r"^\s*(?://go:|//\s*\+build|//\s*nolint|//\s*eslint|//\s*@ts-|/\*\s*eslint|"
-    r"#\s*type:\s*ignore|#\s*noqa|#\s*pylint:|#\s*mypy:|#\s*ruff:|#\s*fmt:|"
-    r"(?://|#|\*)\s*Deprecated:)",
+    r"^\s*(?:"
+    r"//go:|//\s*\+build|//\s*nolint|//\s*lint:|//export\s|//line\s|"
+    r"//\s*eslint|/\*\s*eslint|//\s*@ts-|//\s*prettier-ignore|//\s*biome-ignore|"
+    r"(?://|/\*)\s*(?:istanbul|c8|v8)\s+ignore|//\s*@(?:vitest|jest)-environment|"
+    r"//\s*\+(?:k8s|kubebuilder|genclient)|//\s*swagger:|//\s*#nosec|"
+    r"//\s*(?:unordered\s+)?output:|"
+    r"#\s*type:\s*ignore|#\s*noqa|#\s*pylint:|#\s*mypy:|#\s*ruff:|#\s*fmt:|#\s*pyright:|"
+    r"#\s*isort:|#\s*pragma\b|#\s*nosec|#\s*shellcheck\s|#\s*yamllint\s|#\s*syntax=|"
+    r"#\s*-\*-|#\s*frozen_string_literal:|#\s*rubocop:|"
+    r"--\s*\+goose|--\s*\+migrate|--\s*name:\s*\w+\s+:|"
+    r"(?://|#|\*|--)\s*Deprecated:"
+    r")",
     re.IGNORECASE,
 )
 
@@ -155,6 +193,8 @@ RETURN_VAR = re.compile(r"^\s*return\s+([A-Za-z_]\w*)\s*;?\s*$")
 class Findings:
     def __init__(self):
         self.buckets = {}
+        self.comment_lines = 0
+        self.allowed_comment_lines = 0
 
     def add(self, category, confidence, path, lineno, text):
         key = (category, confidence)
@@ -162,6 +202,19 @@ class Findings:
         entry["count"] += 1
         if len(entry["samples"]) < MAX_SAMPLES:
             entry["samples"].append(f"{path}:{lineno}: {text.strip()[:140]}")
+
+    def count_comments(self, lines, allowed):
+        self.comment_lines += lines
+        if allowed:
+            self.allowed_comment_lines += lines
+
+
+class Docstring:
+    def __init__(self, kind, start, quote):
+        self.kind = kind
+        self.start = start
+        self.quote = quote
+        self.lines = 1
 
 
 def strip_comment(line):
@@ -174,17 +227,17 @@ def strip_comment(line):
     return m.group(1) if m else None
 
 
-def scan_line(f, path, lineno, line, prev_assign):
+def scan_line(f, path, lineno, line, prev_assign, prose):
     if EMOJI.search(line):
         f.add("cosmetic/emoji", "high", path, lineno, line)
     for ch, name in UNICODE_HAZARDS.items():
         if ch in line:
             f.add(f"cosmetic/unicode-{name}", "high", path, lineno, line)
             break
-    if BANNER.search(line) and any(m in line for m in ("//", "#", "/*", "*", "--")):
+    if not prose and BANNER.search(line) and any(m in line for m in ("//", "#", "/*", "*", "--")):
         f.add("comment/banner", "medium", path, lineno, line)
 
-    comment = strip_comment(line)
+    comment = None if prose else strip_comment(line)
     if comment is not None and comment.strip():
         c = comment.strip()
         if CONVERSATIONAL.search(c):
@@ -216,60 +269,124 @@ def scan_line(f, path, lineno, line, prev_assign):
     return m_assign.group(1) if m_assign else None
 
 
-def is_comment_line(line):
+def comment_family(path):
+    base = os.path.basename(path)
+    ext = os.path.splitext(base)[1].lower()
+    if ext in PROSE_EXT:
+        return "prose"
+    if ext in SLASH_EXT:
+        return "slash"
+    if ext in HASH_EXT or base in HASH_FILES or base.startswith("Dockerfile"):
+        return "hash"
+    if ext in DASH_EXT:
+        return "dash"
+    if ext in BLOCK_ONLY_EXT:
+        return "block"
+    return "generic"
+
+
+def is_comment_line(line, family):
     s = line.strip()
     if not s or s.startswith("#!") or CPP_DIRECTIVE.match(s):
         return False
-    return bool(COMMENT_LINE_START.match(s))
+    return bool(LINE_START[family].match(s))
 
 
-def is_machine_mandated(lines):
-    return any(LICENSE_MARK.search(ln) or DIRECTIVE_COMMENT.match(ln) for ln in lines)
+def trailing_comment(line, family):
+    pattern = TRAILING.get(family)
+    if pattern is None:
+        return None
+    for m in pattern.finditer(line):
+        prefix = line[: m.start()]
+        if not prefix.strip():
+            return None
+        if any(prefix.count(q) % 2 for q in ('"', "'", "`")):
+            continue
+        return line[m.start():]
+    return None
 
 
-def flush_comment_run(f, path, start, lines, terminator):
-    if not lines or is_machine_mandated(lines):
+def flush_comment_run(f, path, start, lines, terminator, allowed):
+    if not lines or any(LICENSE_MARK.search(ln) for ln in lines):
         return
-    if len(lines) > MAX_COMMENT_RUN:
+    human = [ln for ln in lines if not DIRECTIVE_COMMENT.match(ln)]
+    if not human:
+        return
+    f.count_comments(len(human), allowed)
+    if not allowed:
+        f.add("comment/present", "high", path, start, f"{len(human)} line(s): {human[0].strip()}")
+    elif len(human) > 1:
         f.add("comment/block-over-one-line", "high", path, start,
-              f"{len(lines)} consecutive comment lines (cap is {MAX_COMMENT_RUN}; condense to one)")
+              f"{len(human)} consecutive comment lines on an allowed path (cap is one)")
     if terminator is not None and EXPORTED_DECL.match(terminator):
-        f.add("comment/public-doc-comment", "high", path, start, lines[0])
+        f.add("comment/public-doc-comment", "high", path, start, human[0])
 
 
-def scan_text(f, path, text):
+def flush_trailing(f, path, lineno, line, family, allowed):
+    comment = trailing_comment(line, family)
+    if comment is None or DIRECTIVE_COMMENT.match(comment):
+        return
+    f.count_comments(1, allowed)
+    if not allowed:
+        f.add("comment/trailing", "high", path, lineno, line)
+
+
+def flush_docstring(f, path, doc, allowed):
+    f.count_comments(doc.lines, allowed)
+    category = "comment/public-doc-comment" if doc.kind == "public" else "comment/docstring"
+    f.add(category, "high", path, doc.start, f"{doc.kind} docstring, {doc.lines} line(s)")
+
+
+def scan_text(f, path, text, allowed):
+    family = comment_family(path)
+    prose = family == "prose"
     prev_assign = None
     run_lines = []
     run_start = 0
     pending_def = None
-    awaiting_docstring = None
+    awaiting_docstring = "module" if path.endswith(".py") else None
+    doc = None
 
     for i, line in enumerate(text.splitlines(), start=1):
         stripped = line.strip()
 
-        if is_comment_line(line):
-            if not run_lines:
-                run_start = i
-            run_lines.append(line)
-        else:
-            flush_comment_run(f, path, run_start, run_lines, line)
-            run_lines = []
+        if doc is not None:
+            doc.lines += 1
+            if doc.quote in stripped:
+                flush_docstring(f, path, doc, allowed)
+                doc = None
+        elif not prose:
+            comment_line = is_comment_line(line, family)
+            if comment_line:
+                if not run_lines:
+                    run_start = i
+                run_lines.append(line)
+            else:
+                flush_comment_run(f, path, run_start, run_lines, line, allowed)
+                run_lines = []
+                flush_trailing(f, path, i, line, family, allowed)
 
-        if awaiting_docstring is not None and stripped:
-            if awaiting_docstring == "public" and DOCSTRING_START.match(stripped):
-                f.add("comment/public-doc-comment", "high", path, i, stripped)
-            awaiting_docstring = None
+            if awaiting_docstring is not None and stripped and not comment_line and not stripped.startswith("#!"):
+                m_doc = DOCSTRING_START.match(stripped)
+                if m_doc:
+                    doc = Docstring(awaiting_docstring, i, m_doc.group(1))
+                    if doc.quote in stripped[m_doc.end():]:
+                        flush_docstring(f, path, doc, allowed)
+                        doc = None
+                awaiting_docstring = None
 
-        m_def = PY_DEF.match(line)
-        if m_def:
-            pending_def = "private" if m_def.group(1).startswith("_") else "public"
-        if pending_def is not None and stripped.endswith(":"):
-            awaiting_docstring = pending_def
-            pending_def = None
+            m_def = PY_DEF.match(line)
+            if m_def:
+                pending_def = "private" if m_def.group(1).startswith("_") else "public"
+            if pending_def is not None and stripped.endswith(":"):
+                awaiting_docstring = pending_def
+                pending_def = None
 
-        prev_assign = scan_line(f, path, i, line, prev_assign)
+        prev_assign = scan_line(f, path, i, line, prev_assign, prose)
 
-    flush_comment_run(f, path, run_start, run_lines, None)
+    flush_comment_run(f, path, run_start, run_lines, None, allowed)
+    if doc is not None:
+        flush_docstring(f, path, doc, allowed)
 
 
 def iter_files(paths):
@@ -299,8 +416,14 @@ def readable(path):
 def render_text(f):
     order = {"high": 0, "medium": 1, "low": 2}
     keys = sorted(f.buckets, key=lambda k: (order.get(k[1], 3), k[0]))
+    outside = f.comment_lines - f.allowed_comment_lines
+    tally = (
+        f"Comment lines: {f.comment_lines} ({outside} outside allowed paths, "
+        f"{f.allowed_comment_lines} on allowed paths). The policy is zero outside allowed paths."
+    )
     if not keys:
-        return "SLOP PRE-SCAN: no deterministic signals found. Read the code and apply judgment anyway."
+        return ("SLOP PRE-SCAN: no deterministic signals found. Read the code and apply judgment anyway.\n"
+                + tally)
     out = ["SLOP PRE-SCAN -- candidate signals, not verdicts. Confirm each against context before acting.\n"]
     total = 0
     for (category, confidence) in keys:
@@ -313,10 +436,13 @@ def render_text(f):
             out.append(f"    ... +{entry['count'] - len(entry['samples'])} more")
     out.append("")
     out.append(f"Total candidate signals: {total}")
+    out.append(tally)
     out.append(
-        "Comment rules: the cap is ONE line, and public/exported symbols get no doc-comment "
-        "unless the human authorized it (a linter rule is not authorization). License, "
-        "generated-file, and build-tag blocks are exempt and already excluded here."
+        "Comment rules: zero human-readable comments, docstrings included; move a real why into a "
+        "name, a test name, docs or the report, then delete. Directives (build tags, pragmas, linter "
+        "switches, Deprecated:, license and generated-file banners) are exempt and already excluded. "
+        "On an --allow-invariants path one line may stay; a public doc-comment never does unless the "
+        "human asked for it in this session, and a linter rule is not asking."
     )
     out.append(
         "Reminders: naming/generic-token is LOW confidence -- role-suffixed domain names "
@@ -335,12 +461,40 @@ def render_json(f):
             "count": entry["count"],
             "samples": entry["samples"],
         })
-    return json.dumps({"signals": payload}, ensure_ascii=False, indent=2)
+    comment_lines = {
+        "total": f.comment_lines,
+        "outside_allowed": f.comment_lines - f.allowed_comment_lines,
+    }
+    return json.dumps({"signals": payload, "comment_lines": comment_lines}, ensure_ascii=False, indent=2)
+
+
+def parse_args(argv):
+    paths = []
+    flags = set()
+    allowed = []
+    it = iter(argv)
+    for a in it:
+        if a == "--allow-invariants":
+            value = next(it, None)
+            if value is None:
+                raise SystemExit("--allow-invariants needs a path")
+            allowed.append(value)
+        elif a.startswith("--allow-invariants="):
+            allowed.append(a.split("=", 1)[1])
+        elif a.startswith("--"):
+            flags.add(a)
+        else:
+            paths.append(a)
+    return paths, flags, [os.path.abspath(p) for p in allowed]
+
+
+def is_allowed(path, roots):
+    full = os.path.abspath(path)
+    return any(full == r or full.startswith(r + os.sep) for r in roots)
 
 
 def main(argv):
-    args = [a for a in argv if not a.startswith("--")]
-    flags = {a for a in argv if a.startswith("--")}
+    args, flags, allowed_roots = parse_args(argv)
     if "--stdin-list" in flags:
         args = [ln.strip() for ln in sys.stdin if ln.strip()] + args
     if not args:
@@ -353,7 +507,7 @@ def main(argv):
         text = readable(path)
         if text is None:
             continue
-        scan_text(f, path, text)
+        scan_text(f, path, text, is_allowed(path, allowed_roots))
         scanned += 1
 
     if "--json" in flags:

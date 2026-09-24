@@ -51,6 +51,11 @@ Omit a line rather than inventing one; "none" is a legitimate value.
 Files that constrain how code is written here, most authoritative first.
 Include the two or three rules that are most often violated by a fresh agent.
 
+## Comments
+Zero everywhere except the paths below, where a one-line invariant may stay:
+- `<path>` — what correctness hangs on here that no name can carry
+Omit the section when there are no such paths.
+
 ## Constraints
 Traps someone new to this repository falls into: filesystem behaviour, search
 that must not be run, network restrictions, builds slow enough to change how you
@@ -106,6 +111,15 @@ two or three that a fresh agent breaks most often here. The value is in the
 surprises: a repository that forbids the standard JSON package, or that runs
 tests through a wrapper, or that regenerates a directory you would otherwise
 edit.
+
+**Comments.** Write the section only when the owner names the paths, now or in
+the project's memory. Rule files that ask for doc-comments are not a signal, and
+neither is how many comments a directory already holds — a package full of
+doc-headers is what the cleanup exists for. A path belongs here when its
+correctness lives in what a name cannot carry — the order of calls, the lock
+that is held, where it departs from a spec — so that a plausible edit breaks it
+without any test going red. The `anti-slop-code` pass reads this section; it is
+the only thing that lets a comment survive outside a human's explicit request.
 
 **Constraints.** Write only what changes behaviour. "The repo is large" changes
 nothing; "recursive search outside the project directory hangs the filesystem"

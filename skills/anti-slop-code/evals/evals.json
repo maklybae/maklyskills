@@ -19,11 +19,11 @@
     {
       "id": 1,
       "prompt": "Here's sync_orders.ts that an AI assistant generated. Tighten it up and strip the AI slop before I commit it.",
-      "expected_output": "Stylistic slop cleaned: the 4-line JSDoc block on the exported function is deleted outright (hollow claims plus a banned public doc-comment with @param/@returns ceremony), banner removed, restating and narrating comments removed, redundant result variable collapsed. No surviving comment run exceeds one line. CRITICAL: the behavioral/security issues are FLAGGED for review, not silently edited or deleted -- hardcoded API_KEY, swallowed catch that leaves data undefined, likely-hallucinated 'sql-secure-builder' import, SQL built by string concatenation (injection). The report separates what was cleaned from what was flagged and states the comment ledger.",
+      "expected_output": "Stylistic slop cleaned: the 4-line JSDoc block on the exported function is deleted outright (hollow claims plus a banned public doc-comment with @param/@returns ceremony), banner removed, restating and narrating comments removed, redundant result variable collapsed. Zero comment lines remain, including the note on the swallowed catch. CRITICAL: the behavioral/security issues are FLAGGED for review, not silently edited or deleted -- hardcoded API_KEY, swallowed catch that leaves data undefined, likely-hallucinated 'sql-secure-builder' import, SQL built by string concatenation (injection). The report separates what was cleaned from what was flagged and states the comment ledger.",
       "files": ["inputs/sync_orders.ts"],
       "assertions": [
         "JSDoc block on the exported function removed entirely",
-        "No surviving comment run exceeds one line",
+        "Zero comment lines remain in the cleaned file",
         "Banner and hollow/restating comments removed",
         "Hardcoded secret NOT silently deleted (kept in code to be flagged)",
         "SQL injection line preserved, not silently rewritten",
@@ -35,15 +35,16 @@
     {
       "id": 2,
       "prompt": "Run an anti-slop pass over this payment.go and remove the AI-generated junk, but be careful not to break anything or strip stuff that's actually meaningful.",
-      "expected_output": "The strict comment policy applied without collateral damage. Deleted: the '// increment retries' restatement, the emoji in the error string, and BOTH two-line doc-comments on exported symbols -- Gateway's (the unit is already carried by the amountCents parameter name, so the comment is restatement) and Pay's first sentence (the signature retyped). The genuine why in Pay's second sentence -- the gateway treats non-positive amounts as full refunds -- is RELOCATED, not lost: it survives as a single line at the amountCents <= 0 guard it explains. Carve-outs left intact: role-suffixed names (StripeClient, CloudPaymentsClient, OrderManager, NewOrderManager), the boundary validation guards, and the Gateway interface with its two implementations. Behavior preserved.",
+      "expected_output": "The zero-comment policy applied without collateral damage. Deleted: the '// increment retries' restatement, the emoji in the error string, and BOTH two-line doc-comments on exported symbols -- Gateway's (the unit is already carried by the amountCents parameter name, so the comment is restatement) and Pay's. The cleaned file has zero comment lines. The genuine why in Pay's second sentence -- the gateway treats non-positive amounts as full refunds -- is NOT left as a comment anywhere, not even one line at the guard, and is NOT lost: with no test in scope to carry it, the report lists it under Relocate with a suggested home (commit message, PR description or docs). The error strings are not reworded to carry it. Carve-outs left intact: role-suffixed names (StripeClient, CloudPaymentsClient, OrderManager, NewOrderManager), the boundary validation guards, and the Gateway interface with its two implementations. Behavior preserved.",
       "files": ["inputs/payment.go"],
       "assertions": [
         "Real slop removed: '// increment retries' comment gone",
         "Real slop removed: emoji gone from error string",
-        "No comment run in the file exceeds one line",
+        "Zero comment lines remain in the cleaned file",
         "No doc-comment remains directly above an exported symbol (Gateway, Pay, NewOrderManager)",
-        "The 'full refunds' why is preserved somewhere in the file, not dropped",
-        "The 'full refunds' why sits at the guard it explains, not as a doc-header",
+        "The 'full refunds' why is not left as a comment anywhere in the file, including at the guard",
+        "The 'full refunds' why is not dropped: the report lists it under Relocate with a suggested home",
+        "ErrInvalidAmount's message and the other error strings are unchanged apart from the emoji",
         "Carve-out kept: role-suffixed domain names preserved",
         "Carve-out kept: boundary validation preserved (amount + accountID guards)",
         "No over-cleaning: interface + both implementations intact"

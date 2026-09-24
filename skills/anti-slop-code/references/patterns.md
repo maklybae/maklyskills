@@ -26,9 +26,10 @@ used in the example here.
 ## 1. Comments
 
 The largest category, and the one with the strictest rules. `SKILL.md` holds the
-doctrine — zero by default, a one-line hard cap, no doc-headers on public symbols
-without authorization, relocate a real why rather than dropping it. This section
-is the concrete forms.
+doctrine — zero human-readable comments, directives excepted; one-line
+invariants only on paths the project profile allows; no doc-header without the
+human asking in this session; move a real why into a name, a test name, docs or
+the report before deleting it. This section is the concrete forms.
 
 **1.1 Restating the code.** The comment says what the next line already says.
 ```
@@ -57,14 +58,15 @@ not a restatement of the verb.
 ```
 Delete. These are conversational artifacts, a dead giveaway of raw LLM output.
 
-**1.4 Trivial docstrings.** Full docstrings on self-evident functions.
+**1.4 Docstrings.** Any docstring, trivial or not, public or private.
 ```python
 def add_numbers(a: int, b: int) -> int:
     """Adds two numbers and returns the result."""   # slop
     return a + b
 ```
 Delete the docstring. A codebase that reads like a language tutorial — every
-trivial function documented — is a strong slop signal.
+function documented — is a strong slop signal, and a docstring on a private
+helper is the same comment with less excuse.
 
 **1.5 Hollow claims and unverified metrics.**
 ```
@@ -72,12 +74,10 @@ trivial function documented — is a strong slop signal.
 // optimized for performance
 // 75% faster than the old version
 ```
-Delete, or replace with a concrete mechanism or a real measurement:
-```
-// 24fps: matches the game's target framerate, ~33% fewer GPU cycles than 30fps
-```
-An adjective like "robust" or "seamless" with nothing behind it is noise; a
-number without a benchmark is a guess dressed as a fact.
+Delete. An adjective like "robust" or "seamless" with nothing behind it is
+noise; a number without a benchmark is a guess dressed as a fact. A real
+measurement belongs in the benchmark or the PR description, not beside the code
+it will stop describing.
 
 **1.6 Section banners.**
 ```
@@ -85,8 +85,8 @@ number without a benchmark is a guess dressed as a fact.
 ```
 Delete. If a file needs banners to be navigable, it usually needs to be split.
 
-**1.7 Doc-comments on public symbols.** Banned by default, in every language:
-Go doc-comments on exported identifiers, Python docstrings on public
+**1.7 Doc-comments on public symbols.** Banned in every language: Go
+doc-comments on exported identifiers, Python docstrings on public
 classes/functions, JSDoc/TSDoc on `export`ed members, Rust `///` on `pub` items.
 ```go
 // NewPaymentManager creates a new PaymentManager.
@@ -107,17 +107,17 @@ export function formatDate(date: Date): string { ... }
 Delete all three. Each one is the signature retyped in prose, and the `@param`
 / `@returns` scaffolding is pure ceremony where the types already say it.
 
-Two things authorize keeping or writing one: the human asked in this session, or
-the module is a published library whose public surface is *already* consistently
-documented (you are matching an external contract, not starting one). A linter
-rule is not authorization — when `revive`, `pydocstyle`, or `require-jsdoc`
-fires on a self-explanatory name, the linter is wrong.
+The only authorization is the human asking for it in this session. A linter rule
+is not — when `revive`, `pydocstyle`, or `require-jsdoc` fires on a
+self-explanatory name, the linter is wrong — and neither is a package whose
+other symbols are already documented.
 
-Where a doc-header carries something real, relocate it rather than dropping it —
-see 1.10.
+Where a doc-header carries something real, move it before deleting — see 1.10.
 
-**1.8 Blocks longer than one line.** The cap is one line. Two or more
-consecutive human-readable comment lines is a defect to fix.
+**1.8 Multi-line blocks.** Outside allowed paths a block goes whole, like any
+other comment. On a path the profile allows, the one-line cap still holds: two
+or more consecutive human-readable lines is a defect even when every line is a
+legitimate why.
 ```python
 # This function takes the raw events, groups them by user id,      # slop:
 # then counts how many events each user has, and finally returns   # 4-line
@@ -126,27 +126,25 @@ consecutive human-readable comment lines is a defect to fix.
 def summarize(events): ...
 ```
 ```python
-def summarize(events): ...          # the name already carries it; no comment
+def summarize(events): ...          # the name already carries it
 ```
-If the why genuinely will not fit in one line, that is the signal it belongs in
-`docs/`: keep a one-line pointer inline and move the detail out. The cap holds
-even when every line is individually a legitimate why — pick the load-bearing
-sentence and drop the rest.
+On an allowed path, keep the load-bearing sentence as one line at the line it
+guards and move the rest (1.10).
 
-Machine-mandated blocks are exempt and stay byte-for-byte: license/copyright/
-SPDX headers, `Code generated by ... DO NOT EDIT.` banners, build tags and
-pragmas (`//go:build`, `# type: ignore`, `/* eslint-disable */`).
+Directive blocks are exempt and stay byte-for-byte: license/copyright/SPDX
+headers, `Code generated by ... DO NOT EDIT.` banners, build tags and pragmas
+(`//go:build`, `# type: ignore`, `/* eslint-disable */`).
 
 **1.9 Stateful / historical comments.**
 ```
 // previously used a map here, changed to a slice for NEURO-1234
 // fixes the bug from the last PR
 ```
-Strip the history; keep only a stateless statement of the current invariant if
-one is needed. Version control holds the history.
+Delete. Version control holds the history. On an allowed path, the stateless
+invariant underneath, if there is one, may survive as one line.
 
-**1.10 Relocating a real why.** The move that makes 1.7 and 1.8 safe. Before
-cutting, ask where the information belongs:
+**1.10 Moving a real why.** The move that makes zero safe. Before cutting a
+comment that carries a unit, an external contract or a reason, find it a home:
 
 *Into a name or type* — the strongest fix, because it cannot go stale.
 ```go
@@ -157,7 +155,9 @@ func Charge(ctx context.Context, amount int64) error
 func Charge(ctx context.Context, amountCents int64) error
 ```
 
-*Down to the line it explains* — for a rationale that cannot become a name.
+*Into a test name* — for a rule the code enforces. The test that pins the rule
+carries it in its name and fails when the rule breaks, which a comment never
+does.
 ```go
 // Pay charges the account. It rejects non-positive amounts because the
 // upstream gateway silently treats them as full refunds.
@@ -168,21 +168,43 @@ func (m *OrderManager) Pay(ctx context.Context, amountCents int64) error {
 ```
 ```go
 func (m *OrderManager) Pay(ctx context.Context, amountCents int64) error {
-	// the gateway treats non-positive amounts as full refunds
 	if amountCents <= 0 {
 		return ErrInvalidAmount
 	}
 ```
-The first sentence was the signature retyped; the second was real external
-behavior, so it survives as one line at the guard that exists because of it.
+```go
+func TestPay_RejectsNonPositiveAmount_GatewayTreatsItAsRefund(t *testing.T)
+```
+Rename a test that already covers the guard. Do not write one during the pass:
+a rule nothing tests is a finding for the report, not an edit.
 
-*Out to `docs/`* — for anything that genuinely needs a paragraph, with a
-one-line pointer left behind if a reader would otherwise miss it.
+*Out to `docs/`* — for a reason that needs a paragraph, when the repository
+already documents this component. No pointer comment is left behind.
 
-**Keep** (these are the point of comments): a non-obvious *why*, a deliberate
-trade-off, an invariant a reader could break unknowingly that no name or type
-can carry, a contract with an external system, or a functional marker
-(`// Deprecated:`, build tags, `# type: ignore`). One line, English, stateless.
+*Into the report* — everything else. The *Relocate* section lists the text and
+the line it explained, and the author carries it into the commit message or the
+PR description, where the why of a change belongs.
+
+Never move a why into behavior: an error string or a log line reworded to hold
+the explanation is a behavior change.
+
+**1.11 Trailing comments.** A comment at the end of a code line is still a
+comment.
+```go
+buf := make([]byte, 4096) // one disk page
+```
+```go
+buf := make([]byte, pageSize)
+```
+Delete, moving the content as in 1.10. Trailing directives — `//nolint`,
+`# type: ignore`, `# noqa` — stay.
+
+**Survives:** directives the tooling reads (`//go:build`, `//go:embed`,
+`//go:generate`, `# type: ignore`, `# noqa`, `eslint-disable`, `Deprecated:`,
+Go example `// Output:`, license and generated-file banners), and one-line,
+English, stateless invariants on paths the profile's `## Comments` section
+lists — only where deleting them lets a plausible edit break the code silently.
+Nothing else.
 
 ---
 
@@ -425,9 +447,9 @@ Most patterns above are legitimate in some context. These are the cases where th
 nothing).
 
 Note the asymmetry from `SKILL.md` principle 4: these carve-outs are about
-**code**, where a wrong cut costs a bug. Only the last two apply to comments, and
-they are narrow on purpose — the comment doctrine does not have a "when in doubt,
-keep it" mode.
+**code**, where a wrong cut costs a bug. Only the last three apply to comments,
+and they are narrow on purpose — the comment doctrine does not have a "when in
+doubt, keep it" mode.
 
 - **Tiny-scope generic names.** `i`, `j`, `x`, `err`, `ctx`, `acc`, `ok`, `_` in
   short scopes are idiomatic, not slop. A three-line loop body does not need
@@ -455,25 +477,29 @@ keep it" mode.
   in user-facing copy where the character is correct (`—` in prose, `…` in a
   localized string). Judge the target, not the character in isolation.
 
-- **Machine-mandated comment blocks.** License/copyright/SPDX headers, `Code
-  generated by ... DO NOT EDIT.` banners, build tags and pragmas. Multi-line by
-  mandate; the one-line cap does not reach them. Leave byte-for-byte.
+- **Directives.** License/copyright/SPDX headers, `Code generated by ... DO NOT
+  EDIT.` banners, build tags, pragmas, linter and type-checker switches,
+  `Deprecated:` markers, Go example `// Output:` blocks. The tooling reads them;
+  leave them byte-for-byte, however many lines they take.
 
-- **Authorized public docs.** Doc-comments on exported symbols survive in exactly
-  two situations: the human asked for them in this session, or the module is a
-  published library whose public surface is already consistently documented. Both
-  are still subject to the one-line cap unless the human asked otherwise. A
-  linter rule, a language convention, or one stray doc-header elsewhere in the
-  file is not authorization.
+- **Paths the profile allows.** One-line invariants under a path listed in the
+  profile's `## Comments` section, where deleting the line lets a plausible edit
+  break the code silently. One line, English, stateless; everything else on the
+  path is cleaned as usual. A path is allowed only by the profile — never by the
+  number of comments already in it.
 
-- **Comments that look like restatement but aren't.** `// off by one: the API
-  index is 1-based` reads like a note about the next line but encodes a
-  non-obvious external contract. Read the whole comment before deleting — then
-  check it still fits in one line, and that a name could not carry it instead.
+- **Docs the human asked for.** A doc-comment survives when the human asked for
+  it in this session, and then still at one line unless they asked for more. A
+  linter rule, a language convention or an already-documented package is not
+  asking.
+
+A comment that encodes a real contract — `// off by one: the API index is
+1-based` — is not a carve-out. It still goes; it is the case 1.10 exists for, so
+move its content before deleting it.
 
 On code: when in doubt, do not cut. A false positive that removes deliberate
 logic is worse than a missed nit, because it erodes trust in the whole pass. On
 comments the default inverts — cut, and let version control hold what was there.
 The skill exists to make code read like a careful human wrote it, and a careful
-human deletes every comment they can while never deleting code they don't
+human leaves no comments behind while never deleting code they don't
 understand.
