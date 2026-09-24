@@ -246,6 +246,13 @@ construction and stay. A loop that closed on accepts, rejects and deferrals
 alone leaves the diff exactly as it was cleaned; skip the pass and say so in
 one line.
 
+Fixes that touched only tests skip the pass but not the comment rule: a comment
+is the thing a fix written under review pressure adds most often, and reviewers
+are told not to look for it. Run the `anti-slop-code` scanner
+(`scripts/scan_slop.py` in that skill, with the profile's allowed paths as
+`--allow-invariants`) over the files those fixes touched, and delete in place
+whatever it counts outside allowed paths.
+
 The pass is proportional. A handful of fix hunks is cleaned by you, in your own
 context, with the two anti-slop skills applied literally; only a loop that
 rewrote a substantial part of the change earns a dispatched cleaner. Either way

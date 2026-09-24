@@ -99,16 +99,19 @@ it never ran — and even then none of the scoped ones the report lists.
 
 Run the `anti-slop-code` skill on the diff — it ships in this bundle, so when
 installed as a plugin it is listed under the bundle's prefix. It owns the
-comment doctrine (zero by default, a one-line cap, no doc-header on a symbol
-merely for being exported) and the split between what you clean silently and
-what you surface. Do not restate its rules here or improvise a lighter version —
-invoke it.
+comment doctrine (zero comments; directives stay, and one-line invariants only
+on the paths the profile's `## Comments` section lists) and the split between
+what you clean silently and what you surface. Do not restate its rules here or
+improvise a lighter version — invoke it.
 
 Whatever it flags as *behavioural* comes back as a finding for the ledger
 (`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`,
 schema in `../flow/references/ledger.md` relative to this skill's directory),
 not as an edit. That boundary is the whole
-reason the split exists.
+reason the split exists. Its *Relocate* list — the reasons the deleted comments
+carried that found no name or test — goes into the ledger's `## Decisions`, one
+line each, so it reaches the commit message and the PR description instead of
+evaporating with the comments.
 
 ## Pass 2 — the tests
 
@@ -146,8 +149,8 @@ know which ones they are.
 - **Single-caller abstractions invented during the work** — an interface with
   one implementer and no fake behind it, a wrapper that only forwards, a
   parameter that is always the same value. Inline them.
-- **Scaffolding.** Debug prints, temporary flags, commented-out code, TODOs
-  nobody will do.
+- **Scaffolding.** Debug prints, temporary flags, commented-out code, TODOs — a
+  real one goes to the ledger's open questions or the tracker, never the code.
 
 ## Finish
 
