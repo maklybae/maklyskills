@@ -44,8 +44,17 @@ finding. Cleanup runs before the first review and never between rounds;
 `flow-resolve` may run one narrower pass over the round fixes at exit. Whoever
 edits in a cleanup runs its verification once; nobody repeats it.
 
-`flow` is the umbrella skill: it routes to a stage, owns the task ledger, and
-knows how to resume. `flow-setup` detects a repository's commands once and
+Not every change runs all seven. The run is sized first, by how a defect in it
+would be found. A **mechanical** change — the compiler or an existing test would
+catch a mistake — runs implement and test. A **contained** one — a new branch of
+behaviour, a reach you can see whole — adds an in-place cleanup, a two-or-three
+lens review and resolve. A **feature** runs everything. Four escalators move a
+change up regardless of size: persistent state and contracts, auth and secrets,
+concurrency, paths the profile marks `core`. The route is said in one line
+before the first edit and only ever revised upward.
+
+`flow` is the umbrella skill: it sizes the run, routes to a stage, owns the task
+ledger, and knows how to resume. `flow-setup` detects a repository's commands once and
 writes them to `.claude/flow-profile.md`. This remains the canonical shared
 profile location for both hosts.
 

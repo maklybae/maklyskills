@@ -9,7 +9,9 @@ description: >-
   будем делать", "plan this out", when a task is big enough that implementing it
   straight would mean improvising design decisions mid-edit, or right after
   flow-explore has produced a brief. Prefer it over jumping into edits whenever
-  the change spans more than one file or introduces a new concept.
+  the change introduces a new concept or has a design fork with more than one
+  reasonable answer — the feature route of the flow skill's sizing rule; a
+  change that merely spans files is not, by itself, a reason to plan.
 ---
 
 # Flow plan

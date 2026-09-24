@@ -43,8 +43,9 @@ Everything the reviewers share, assembled once:
   to read the surrounding code anyway, so give them the means, not a snapshot.
 - The **file-at-base command** from the profile's `## VCS` section, which is how
   a reviewer establishes origin instead of guessing it.
-- The **task** — the ledger's `## Task`, so a finding can be judged against
-  intent instead of guessed at.
+- The **task** — the ledger's `## Task`, or, before a ledger exists on the
+  contained route, the route line and the three-line plan that opened the
+  work — so a finding can be judged against intent instead of guessed at.
 - The **profile's** stack, commands and constraints. Not its criticality:
   severity describes what a defect costs, and a reviewer told the code is
   peripheral starts discounting findings it should simply be reporting. That
@@ -64,8 +65,9 @@ Everything the reviewers share, assembled once:
 ## 3. Dispatch the lenses in parallel
 
 Pick the lens set from [references/lenses.md](references/lenses.md) — the five
-defaults unless the change, the profile's criticality, or the user calls for
-more. Fill
+defaults for a feature; two or three, named there, for a contained-route
+change; more when the change, the profile's criticality, or the user calls for
+it. Fill
 [references/reviewer-prompt.md](references/reviewer-prompt.md) once per lens and
 send **all of the Agent calls in a single message** so they run concurrently.
 Dispatch each lens as a `flow-reviewer` agent — the bundle ships it, and its
@@ -102,7 +104,11 @@ quota will fill it with noise.
 Append each surviving finding to the ledger's `## Findings` with a fresh id —
 the ledger is at
 `~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`, schema
-in `../flow/references/ledger.md` relative to this skill's directory. Ids are never reused, so that "R7 is back" stays a meaningful
+in `../flow/references/ledger.md` relative to this skill's directory. On the
+contained route this is the stage that creates it: header with the route,
+`## Task` from the route line and the three-line plan, `## Verification` from
+the runs already made in this session, then the findings. From here on the next
+round needs it. Ids are never reused, so that "R7 is back" stays a meaningful
 sentence.
 
 Report to the user compactly — id, severity, origin, `file:line`, and the

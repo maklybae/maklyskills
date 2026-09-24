@@ -9,9 +9,9 @@ description: >-
   конца", "start a full cycle"; when they ask which stage comes next or want to
   resume a task started earlier; when they hand over a goal and step away
   ("дальше сам", "сделай всё сам", "run it unattended"); or when they hand over
-  a ticket or feature big enough that plan-then-build-then-review is the honest
-  shape of the work. Also use it to pick which single flow-* stage skill applies
-  when only part of the cycle is wanted.
+  a ticket or feature of any size — the run is sized first, and a mechanical
+  change runs two of the seven stages, not all of them. Also use it to pick
+  which single flow-* stage skill applies when only part of the cycle is wanted.
 ---
 
 # Flow
@@ -57,9 +57,73 @@ Stage 5 runs once, before the first review, and never between rounds.
 step. Whoever edits in a cleanup runs its verification, once; the dispatcher
 reads that line from the ledger and runs nothing again.
 
-## Entering, resuming, skipping
+## Sizing the run
 
-**New task** — start at `flow-explore`; it creates the ledger.
+The seven stages are the shape of a feature. Most changes are not features, and
+running the full shape over a one-line edit is how a pipeline earns the name
+"ceremony". So the first move on any task is to size it, and the size turns on
+one question: **how would a defect in this change be found?**
+
+| Route | A defect would be found by | Stages |
+|---|---|---|
+| **mechanical** | the compiler, the type checker, or a test that already exists | implement → test |
+| **contained** | a test nobody has written yet, inside a reach you can see whole | implement → test → cleanup in place → review (two or three lenses) → resolve |
+| **feature** | nobody, until a plan says what right looks like | all seven |
+
+**Mechanical** is threading a parameter or a header through, a rename, a new
+constant or config value, a dependency bump, a field mirrored from a proto.
+There is nothing to decide, and a mistake fails to compile or turns an existing
+test red. No ledger, no review, no cleanup stage: write it clean, read the diff
+once before calling it done, run the verification.
+
+**Contained** adds a branch of behaviour to existing code — a new condition, an
+error path, a case the old code did not handle. A defect can now pass the tests
+that exist, so the change earns a review; but its whole reach is the files you
+touched and their direct callers, so two or three lenses read it, not five.
+`flow-implement`'s three-line plan is the plan gate, cleanup is done in your own
+context, and the ledger is created when the first review round needs somewhere
+to put its findings — not before.
+
+**Feature** is a new surface — an endpoint, a message, a table, a flag with
+semantics of its own — new persistent state, more than one module, or a design
+fork with more than one reasonable answer. That is what the seven stages were
+written for, and every one of them runs.
+
+Four escalators move a change up a route whatever its size. They name the
+places where a small diff has a long reach:
+
+- it touches persistent state, a schema, a message format, or a contract that
+  other code or other teams read;
+- it touches authentication, authorization, secrets, or anything an untrusted
+  caller can reach — and the security lens is on;
+- it adds a writer to concurrent code — a goroutine, a worker, a second caller
+  of something that assumed one;
+- it lands on a path the profile's `## Criticality` marks `core`.
+
+Threading `X-Request-Id` through a client is mechanical. Threading the
+authorization header through the same client is contained with the security
+lens on: the diff is the same size, the wire is not.
+
+**Say the route before the first edit**, in one line with its reason —
+"mechanical: a wrong signature fails to compile and there is no new branch;
+implement and test". The user reads it and can disagree. For a mechanical change
+that line is the only gate there is, which is why it is not optional. In an
+unattended run it goes into the ledger header as `route:`.
+
+**A route is revised upward, never down.** The moment a mechanical change needs
+a decision, or a contained change reaches a file you did not expect, say so and
+move up: the estimate was wrong, and now is the cheap time to notice. A feature
+that turns out small still gets its review — the sizing was wrong once already,
+and the review is what catches the second time.
+
+One stage is on every route: `flow-test`. An unverified claim is worse than no
+claim, whatever the size of the change.
+
+## Entering and resuming
+
+**New task** — size it first. On the feature route start at `flow-explore`,
+which creates the ledger; on the other two start at `flow-implement`, whose
+no-plan section is the plan gate at the price the task deserves.
 
 **Resuming** — read the ledger for the task at
 `~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/`. Its `stage:`
@@ -67,13 +131,8 @@ line says where the work stopped and its findings say what is still open. Do not
 reconstruct state from the diff when a ledger exists.
 
 **A single stage** — if the user names one ("проревьюй", "почисти"), run just
-that skill. Still update the ledger; a stage run out of band is still state.
-
-**Skipping** — a change small enough to hold in your head does not need a plan,
-and a throwaway script does not need a review. But say out loud which stages you
-skipped and why, so the user can disagree. Two skips are almost never right:
-`flow-test`, because an unverified claim is worse than no claim, and
-`flow-review` on anything that will run in production.
+that skill. Still update the ledger, creating it if the stage produces
+something a later stage will need; a stage run out of band is still state.
 
 ## Where the human is required
 
@@ -105,10 +164,10 @@ unrecoverable rather than merely wrong:
   pull request opened. Silence means stop at the tree: an outward-facing action
   does not become authorised by the fact that nobody was watching.
 
-Record both in the ledger header — `mode: unattended, ends at <boundary>`, plus
-`budget: N rounds` when the user named one — so a session that resumes the work,
-and the user reading it in the morning, know which rules the run was operating
-under.
+Record both in the ledger header — `route: feature`, `mode: unattended, ends
+at <boundary>`, plus `budget: N rounds` when the user named one — so a session
+that resumes the work, and the user reading it in the morning, know which rules
+the run was operating under.
 
 **The three gates do not vanish when nobody can answer. They change shape.**
 
