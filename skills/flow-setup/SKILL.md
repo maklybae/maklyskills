@@ -86,7 +86,7 @@ judgement re-derived, differently, in every review round.
 
 The profile goes in `<project-root>/.claude/flow-profile.md`, and that location
 then *defines* the project root for everything else — the ledger path is derived
-from it. In a plain repository the root is obvious. In a monorepo it is not:
+from it unless the profile names a `## Ledger` root. In a plain repository the root is obvious. In a monorepo it is not:
 prefer the directory the user actually works in (the service or package),
 not the top of a mount that contains thousands of unrelated projects. When two
 readings are both plausible, ask — this is one of the questions worth spending

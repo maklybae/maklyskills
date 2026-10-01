@@ -105,8 +105,8 @@ what you clean silently and what you surface. Do not restate its rules here or
 improvise a lighter version — invoke it.
 
 Whatever it flags as *behavioural* comes back as a finding for the ledger
-(`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`,
-schema in `../flow/references/ledger.md` relative to this skill's directory),
+(`<ledger-root>/<task-slug>/ledger.md`,
+root and schema in `../flow/references/ledger.md` relative to this skill's directory),
 not as an edit. That boundary is the whole
 reason the split exists. Its *Relocate* list — the reasons the deleted comments
 carried that found no name or test — goes into the ledger's `## Decisions`, one
