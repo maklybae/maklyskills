@@ -7,7 +7,9 @@ One file per task, **outside the repository**:
 ```
 
 `<ledger-root>` is the `root:` line of the profile's `## Ledger` section when
-the profile has one. Otherwise it is derived:
+the profile has one — search the profile for that heading rather than reading
+until you meet it, because a partial read that stops short of the section looks
+exactly like a profile without one. Otherwise it is derived:
 
 ```
 ~/.claude/projects/<project-root-with-slashes-as-dashes>/flow

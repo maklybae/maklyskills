@@ -13,6 +13,12 @@ repository's ignore files alone.
 ```markdown
 # Flow profile
 
+## Ledger
+- root: `<absolute dir>` — where task ledgers live
+Only for a project worked on from several checkouts (worktrees, clones), so
+they share one directory. Omit the section to derive the root from the
+profile's location.
+
 ## Stack
 Languages, frameworks, how the tree is laid out, where the code you touch lives.
 Two or three lines.
@@ -42,12 +48,6 @@ Omit a line rather than inventing one; "none" is a legitimate value.
 - diff vs base: `<cmd>`
 - file at base: `<cmd>` — one file as it stood at the base ref
 - ship: how a change reaches review here (commit → PR command, or "ask the user")
-
-## Ledger
-- root: `<absolute dir>` — where task ledgers live
-Only for a project worked on from several checkouts (worktrees, clones), so
-they share one directory. Omit the section to derive the root from the
-profile's location.
 
 ## Spec workflow
 - openspec: none | roots: `<paths>`
