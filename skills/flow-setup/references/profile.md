@@ -13,6 +13,12 @@ repository's ignore files alone.
 ```markdown
 # Flow profile
 
+## Ledger
+- root: `<absolute dir>` — where task ledgers live
+Only for a project worked on from several checkouts (worktrees, clones), so
+they share one directory. Omit the section to derive the root from the
+profile's location.
+
 ## Stack
 Languages, frameworks, how the tree is laid out, where the code you touch lives.
 Two or three lines.

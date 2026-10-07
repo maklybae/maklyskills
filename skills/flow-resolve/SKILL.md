@@ -155,8 +155,8 @@ it. That run is the next round's baseline.
 ## Record
 
 For each finding, append the verdict and its reason to the existing entry in the
-ledger — `~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`,
-schema in `../flow/references/ledger.md` relative to this skill's directory. Never rewrite or delete the finding text: the settled list is what the
+ledger — `<ledger-root>/<task-slug>/ledger.md`,
+root and schema in `../flow/references/ledger.md` relative to this skill's directory. Never rewrite or delete the finding text: the settled list is what the
 next review round is handed, and it only works if it is complete — deferred
 entries included. Leave one out and the next round rediscovers the same
 inherited defect, which is the failure mode nobody spots, because the ledger

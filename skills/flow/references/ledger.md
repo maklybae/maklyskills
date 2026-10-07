@@ -3,7 +3,16 @@
 One file per task, **outside the repository**:
 
 ```
-~/.claude/projects/<project-root-with-slashes-as-dashes>/flow/<task-slug>/ledger.md
+<ledger-root>/<task-slug>/ledger.md
+```
+
+`<ledger-root>` is the `root:` line of the profile's `## Ledger` section when
+the profile has one — search the profile for that heading rather than reading
+until you meet it, because a partial read that stops short of the section looks
+exactly like a profile without one. Otherwise it is derived:
+
+```
+~/.claude/projects/<project-root-with-slashes-as-dashes>/flow
 ```
 
 `<project-root-with-slashes-as-dashes>` is the absolute path of the project root
@@ -12,6 +21,11 @@ for its own per-project directories, so the ledger lands beside them. The
 project root is the directory that holds `.claude/flow-profile.md`; anchoring to
 it rather than to the current directory keeps the path stable whether the
 session started at the top of the tree or three levels down inside a service.
+
+The derived root follows the checkout: a worktree or a second clone of the same
+project gets a directory of its own, and a task started in one is invisible from
+the others. A project worked on from several checkouts sets `## Ledger` so all of
+them write to one directory.
 
 `<task-slug>` is a kebab-case name for the task: `add-vector-index`,
 `fix-retry-storm`.

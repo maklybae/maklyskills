@@ -85,7 +85,8 @@ because it is about the repository; it stays untracked unless you decide
 otherwise, and the skills never touch your ignore files.
 
 **`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`** —
-per task, deliberately outside the repository. Current stage, decisions with
+per task, deliberately outside the repository; a profile's `## Ledger` section
+moves the root, so every worktree of one project writes to the same place. Current stage, decisions with
 their rejected alternatives, open questions, and every review finding with its
 verdict. It holds dead ends and "we consciously decided not to fix this", which
 is exactly the material that gets self-censored once it is visible in a shared

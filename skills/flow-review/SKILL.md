@@ -103,7 +103,7 @@ quota will fill it with noise.
 
 Append each surviving finding to the ledger's `## Findings` with a fresh id —
 the ledger is at
-`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`, schema
+`<ledger-root>/<task-slug>/ledger.md`, root and schema
 in `../flow/references/ledger.md` relative to this skill's directory. On the
 contained route this is the stage that creates it: header with the route,
 `## Task` from the route line and the three-line plan, `## Verification` from

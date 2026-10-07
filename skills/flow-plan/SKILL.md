@@ -36,7 +36,7 @@ nobody knows which one the code follows.
 **Otherwise**, write `plan.md` next to the ledger, in the same directory.
 
 Either way the ledger — outside the repository at
-`~/.claude/projects/<project-root-as-dashes>/flow/<task-slug>/ledger.md`, schema
+`<ledger-root>/<task-slug>/ledger.md`, root and schema
 in `../flow/references/ledger.md` relative to this skill's directory — points at
 the result through its `spec:` line, so later stages and review subagents can
 find it.
