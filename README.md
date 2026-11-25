@@ -1,7 +1,7 @@
 # maklyskills
 
-Personal skill bundle for Claude Code, Codex, and ChatGPT Work, installable as
-a plugin.
+Personal skill bundle for Claude Code, Codex, ChatGPT Work, and Antigravity,
+installable as a plugin.
 
 Two kinds of skill live here:
 
@@ -22,6 +22,10 @@ Two kinds of skill live here:
 # Codex CLI / ChatGPT desktop app
 codex plugin marketplace add ~/maklyskills
 # Then install maklyskills from the marketplace and start a new task.
+
+# Antigravity
+ln -s ~/maklyskills ~/.gemini/config/plugins/maklyskills
+# Or clone directly: git clone https://github.com/maklybae/maklyskills ~/.gemini/config/plugins/maklyskills
 ```
 
 From another machine, point the marketplace at the git remote instead of the
